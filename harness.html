@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>ABR Test Runner</title>
+    <meta name="description" content="" />
+
+    <script src="dash.js/dist/dash.all.debug.js"></script>
+    <script src="http://79423.analytics.edgesuite.net/js/csma.js"></script>
+    <script src="akamai/js/DashAkamaiAnalytics.js"></script>
+
+    <script>
+        var AKAMAI_MEDIA_ANALYTICS_CONFIG_FILE_PATH = 'akamai/js/beacon-15785.xml?enableGenericAPI=1',
+            MPDS_JSON_FILE_PATH = 'mpds.json',
+            controlbar,
+            player,
+            mpds = null,
+            nextMpdIndex = 0,
+            timeout = null;
+
+        function getNextMpdObj() {
+            if (!mpds || mpds.length < 1) {
+                return null;
+            }
+            if (nextMpdIndex >= mpds.length) {
+                nextMpdIndex = 0;
+            }
+            var mpd = mpds[nextMpdIndex];
+            ++nextMpdIndex;
+            return mpd;
+        }
+
+        function startTimeout(delayMs) {
+            stopTimeout();
+            timeout = setTimeout(function () {
+                timeout = null;
+                next();
+            }, delayMs);
+        }
+
+        function stopTimeout() {
+            if (timeout) {
+                clearTimeout(timeout);
+            }
+            timeout = null;
+        }
+
+        function init() {
+            player = dashjs.MediaPlayer().create();
+            player.initialize(document.getElementById('video'), null, true);
+
+            player.on(dashjs.MediaPlayer.events.PLAYBACK_ENDED, onPlaybackEnded);
+            player.on(dashjs.MediaPlayer.events.PLAYBACK_ERROR, onError);
+            player.on(dashjs.MediaPlayer.events.ERROR, onError);
+
+            //player.setFastSwitchEnabled(true);
+            //player.enableBufferOccupancyABR(true);
+
+            var dashAkamaiAnalytics = new AkamaiAnalytics.DashAkamaiAnalytics();
+            dashAkamaiAnalytics.setDashMediaPlayer(player);
+
+            var xhr = new XMLHttpRequest();
+            xhr.overrideMimeType("application/json");
+            xhr.open('GET', MPDS_JSON_FILE_PATH);
+            xhr.onreadystatechange = function() {
+                // TODO: check for errors
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    mpds = JSON.parse(xhr.responseText).mpds;
+                    next();
+                }
+            };
+            xhr.send();
+        }
+
+        function next() {
+            stopTimeout();
+
+            var mpdObj = getNextMpdObj();
+            if (mpdObj) {
+                player.attachSource(mpdObj.url);
+                startTimeout(1000 * mpdObj.duration_s);
+            }
+        }
+
+        function onPlaybackEnded(e) {
+            next();
+        }
+
+        function onError(e) {
+            player.reset();
+            next();
+        }
+
+
+    </script>
+
+    <style>
+        video {
+            width: 640px;
+            height: 360px;
+        }
+    </style>
+
+    <body onload="init()" style="background-color:#000000">
+        <video id="video"> </video>
+    </body>
+</html>
