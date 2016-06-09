@@ -4,7 +4,8 @@ SessionInfo = function() {
     this.time = NaN;
     this.wallclockTime = NaN;
     this.abr =  null;
-    this.fastSwitch = null
+    this.fastSwitch = null;
+    this.profile = null;
 }
 
 SessionInfo.prototype = {
