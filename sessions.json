@@ -1,0 +1,14 @@
+{
+    "profiles": [
+        {"url": "profile.json"}
+    ],
+    "mpds": [
+        {"url": "http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd", "duration": "690"},
+        {"url": "http://rdmedia.bbc.co.uk/dash/ondemand/testcard/1/client_manifest-events.mpd", "duration_s": "3660"}
+    ],
+    "configs": [
+        {"fastSwitching": "false", "bufferOccupancyAbr": "false"},
+        {"fastSwitching": "true",  "bufferOccupancyAbr": "false"},
+        {"fastSwitching": "false", "bufferOccupancyAbr": "true" }
+    ]
+}

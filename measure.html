@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Network Measurement</title>
+    <meta name="description" content="" />
+
+    <script>
+        // TODO: pick different default values
+        var totalDurationS = 60;
+        var profileResolutionS = 20;
+        var samplePeriodS = 5;
+        var url = 'http://dash.edgesuite.net/dash264/TestCases/1a/sony/DASH_vodvideo_Track1.m4v';
+        var maxBlockBytes = 1048576;
+
+        var postUrl = 'http://127.0.0.1:8000/profile.json'; // TODO
+
+        var cacheBreakCounter = new Date().getTime();
+
+        var totalTimeLeftS;
+        var periodTimeLeftS;
+
+        var nextEventTimeMs;
+        var xhr;
+        var lastProgressEvent;
+        var timeReqSentMs;
+        var timeFirstByteMs;
+        var timeLastProgressMs;
+        var timeReadyMs;
+        var bytesLoaded;
+        var timeout;
+
+        var running;
+
+        var averageCount;
+        var averageLatencyMs;
+        var averageThroughputMbps;
+
+        var profileJson;
+        var delimiterProfileJson;
+        var indexProfileJson;
+
+        var lines;
+        var jsonbox;
+        var textbox;
+
+        function init() {
+            document.getElementById('fieldTotalDuration').value = totalDurationS;
+            document.getElementById('fieldProfileResolution').value = profileResolutionS;
+            document.getElementById('fieldSamplePeriod').value = samplePeriodS;
+            document.getElementById('fieldUrl').value = url;
+            document.getElementById('fieldMaxBlockBytes').value = maxBlockBytes;
+
+            setRunning(false);
+        }
+
+        function clickStartCancel() {
+            if (!running) {
+                setRunning(true);
+
+                xhr = null;
+                timeout = null;
+                totalTimeLeftS = totalDurationS;
+                periodTimeLeftS = profileResolutionS;
+    
+                profileJson = '{\n    "profile": [';
+                delimiterProfileJson = '\n        ';
+                indexProfileJson = 0;
+                jsonbox = document.getElementById('jsonbox');
+                jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
+    
+                lines = [];
+                textbox = document.getElementById('textbox');
+                textbox.innerHTML = '';
+
+                clearAverage();
+                nextEventTimeMs = new Date().getTime(); // nextEventTimeMs will be calculated using previous value to avoid drift
+                nextSample();
+            } else {
+                running = false;
+                setRunning(false);
+                document.getElementById('buttonStartCancel').innerHTML = 'Start';
+
+                if (timeout) {
+                    clearTimeout(timeout);
+                    timeout = null;
+                }
+
+                if (xhr) {
+                   xhr.abort();
+                   xhr = null;
+                }
+            }
+        }
+
+        function clickTotalDuration() {
+            totalDurationS = parseInt(document.getElementById('fieldTotalDuration').value);
+        }
+
+        function clickProfileResolution() {
+            profileResolutionS = parseInt(document.getElementById('fieldProfileResolution').value);
+        }
+
+        function clickSamplePeriod() {
+            samplePeriodS = parseInt(document.getElementById('fieldSamplePeriod').value);
+        }
+
+        function clickUrl() {
+            url = document.getElementById('fieldUrl').value;
+        }
+
+        function clickMaxBlockBytes() {
+            maxBlockBytes = parseInt(document.getElementById('fieldMaxBlockBytes').value);
+        }
+
+        function setRunning(r) {
+            running = r;
+
+            document.getElementById('fieldTotalDuration').disabled = r;
+            document.getElementById('fieldProfileResolution').disabled = r;
+            document.getElementById('fieldSamplePeriod').disabled = r;
+            document.getElementById('fieldUrl').disabled = r;
+            document.getElementById('fieldMaxBlockBytes').disabled = r;
+            document.getElementById('buttonTotalDuration').disabled = r;
+            document.getElementById('buttonProfileResolution').disabled = r;
+            document.getElementById('buttonSamplePeriod').disabled = r;
+            document.getElementById('buttonUrl').disabled = r;
+            document.getElementById('buttonMaxBlockBytes').disabled = r;
+
+            if (r) {
+                document.getElementById('fieldTotalDuration').value = totalDurationS;
+                document.getElementById('fieldProfileResolution').value = profileResolutionS;
+                document.getElementById('fieldSamplePeriod').value = samplePeriodS;
+                document.getElementById('fieldUrl').value = url;
+                document.getElementById('fieldMaxBlockBytes').value = maxBlockBytes;
+
+                document.getElementById('buttonStartCancel').innerHTML = 'Cancel';
+            } else {
+                document.getElementById('buttonStartCancel').innerHTML = 'Start';
+            }
+        }
+
+        function clearAverage() {
+            averageCount = 0;
+            averageLatencyMs = 0.0;
+            averageThroughputMbps = 0.0;
+        }
+
+        function updateAverageLatencyMsThroughputMbps(latencyMs, throughputMbps) {
+            ++averageCount;
+            averageLatencyMs += (latencyMs - averageLatencyMs) / averageCount;
+            averageThroughputMbps += (throughputMbps - averageThroughputMbps) / averageCount;
+        }
+
+        function nextSample() {
+            xhr = new XMLHttpRequest();
+            xhr.open('GET', url + '?nocache=' + cacheBreakCounter);
+            ++cacheBreakCounter;
+            xhr.overrideMimeType('text/plain; charset=x-user-defined');
+            xhr.setRequestHeader("Range", "bytes=0-" + (maxBlockBytes - 1));
+
+            xhr.onprogress = function (e) {
+                if (e.loaded > 0) {
+                    bytesLoaded = e.loaded;
+                    timeLastProgressMs = new Date().getTime();
+                    if (!timeFirstByteMs) {
+                        timeFirstByteMs = timeLastProgressMs;
+                    }
+                }
+            };
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && (xhr.status === 200 || xhr.status === 206) && !timeReadyMs) {
+                    bytesLoaded = xhr.response.length;
+                    timeReadyMs = new Date().getTime();
+                }
+            };
+
+            timeReqSentMs = new Date().getTime();
+            timeFirstByteMs = null;
+            timeLastProgressMs = null;
+            timeReadyMs = null;
+            bytesLoaded = 0;
+            xhr.send();
+
+            nextEventTimeMs += 1000 * samplePeriodS;
+            timeout = setTimeout(function () {
+                if (xhr.readyState === 4 && (xhr.status === 200 || xhr.status === 206)) {
+                    updateAverageLatencyMsThroughputMbps(timeFirstByteMs - timeReqSentMs, 0.008 * bytesLoaded / (timeReadyMs - timeFirstByteMs + 1));
+                    lines.push('latency: ' + (timeFirstByteMs - timeReqSentMs) + ' ms, throughput: ' + (0.008 * bytesLoaded / (timeReadyMs - timeFirstByteMs)).toFixed(3) + ' Mbps');
+                } else if (xhr.readyState === 3 && bytesLoaded > 0 && timeFirstByteMs < timeLastProgressMs) {
+                    updateAverageLatencyMsThroughputMbps(timeFirstByteMs - timeReqSentMs, 0.008 * bytesLoaded / (timeLastProgressMs - timeFirstByteMs + 1));
+                    lines.push('latency: ' + (timeFirstByteMs - timeReqSentMs) + ' ms, throughput: ' + (0.008 * bytesLoaded / (timeLastProgressMs - timeFirstByteMs)).toFixed(3) + ' Mbps');
+                    xhr.abort();
+                } else {
+                    lines.push('*');
+                    xhr.abort();
+                }
+                xhr = null;
+                textbox.innerHTML = lines.join('<br/>');
+
+                periodTimeLeftS -= samplePeriodS;
+                if (periodTimeLeftS <= 0) {
+                    profileJson += delimiterProfileJson + '{"index": "' + indexProfileJson + '", "duration_s": "' + profileResolutionS.toFixed(0) + '", "latency_ms": "' + averageLatencyMs.toFixed(0) + '", "throughput_Mbps": "' + averageThroughputMbps.toFixed(3) + '"}';
+                    delimiterProfileJson = ',\n        ';
+                    ++indexProfileJson;
+                    jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
+                    clearAverage();
+
+                    lines.push('');
+
+                    periodTimeLeftS = profileResolutionS;
+                    totalTimeLeftS -= profileResolutionS;
+
+                    if (totalTimeLeftS <= 0) {
+                        profileJson += '\n    ]\n}\n';
+                        jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
+
+                        var xhrPost = new XMLHttpRequest();
+                        xhrPost.open('POST', postUrl);
+                        xhrPost.send(profileJson);
+
+                        setRunning(false);
+                        return;
+                    }
+                }
+
+                nextSample();
+            }, nextEventTimeMs - timeReqSentMs);
+        }
+
+    </script>
+
+    <body onload="init()">
+        <input id="fieldTotalDuration" type="text" size="50" placeholder="Total duration (s)" />
+        <button id="buttonTotalDuration" type="button" onclick="clickTotalDuration()">Set total duration</button>
+        <br/>
+        <input id="fieldProfileResolution" type="text" size="50" placeholder="Profile resolution (s)" />
+        <button id="buttonProfileResolution" type="button" onclick="clickProfileResolution()">Set profile resolution</button>
+        <br/>
+        <input id="fieldSamplePeriod" type="text" size="50" placeholder="Sample period (s)" />
+        <button id="buttonSamplePeriod" type="button" onclick="clickSamplePeriod()">Set sample period</button>
+        <br/>
+        <input id="fieldUrl" type="text" size="50" placeholder="Download URL" />
+        <button id="buttonUrl" type="button" onclick="clickUrl()">Set download URL</button>
+        <br/>
+        <input id="fieldMaxBlockBytes" type="text" size="50" placeholder="Sample size (bytes)" />
+        <button id="buttonMaxBlockBytes" type="button" onclick="clickMaxBlockBytes()">Set sample size</button>
+        <br/>
+
+        <button id="buttonStartCancel" type="button" onclick="clickStartCancel()">Start</button><br/>
+        <div id="jsonbox"></div><br/>
+        <div id="textbox"></div><br/>
+    </body>
+</html>
