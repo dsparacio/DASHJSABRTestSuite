@@ -2,9 +2,10 @@
 
 NetworkModulator = function() {
 
-   var profile = null,
-       currentProfileIndex = NaN,
-       profileStepTimeout = null;
+    var PROXY_CONTROL_URL = 'http://127.0.0.1:8080/proxy/8008/limit';
+    var profile = null;
+    var currentProfileIndex = NaN;
+    var profileStepTimeout = null;
 
     function loadProfile(url, callback) {
 

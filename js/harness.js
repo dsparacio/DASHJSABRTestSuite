@@ -1,12 +1,11 @@
 Harness = function() {
 
     var SESSIONS_JSON_FILE = 'session_config.json';
-    var PROXY_CONTROL_URL = 'http://127.0.0.1:8080/proxy/8008/limit';
     var player = null;
     var configs = null;
     var nextConfigIndex = 0;
     var sessionTimeout = NaN;
-    var metrics = null;
+    var metricsCollection = null;
     var networkModulator = null;
     var currentSessionInfo = null;
 
@@ -20,14 +19,16 @@ Harness = function() {
         player.on(dashjs.MediaPlayer.events.ERROR, onError);
         player.on(dashjs.MediaPlayer.events.BUFFER_LEVEL_STATE_CHANGED, onBufferStateChange);
         player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_START, onQualityChanged);
+        player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, onManifestLoaded)
 
-        metrics = new Metrics();
+        metricsCollection = new MetricsCollection();
         networkModulator = new NetworkModulator();
         loadSessionConfig();
     }
 
     function next() {
         stopSessionTimeout();
+        networkModulator.stop();
 
         var config = getNextSessionConfig();
         if (config) {
@@ -44,7 +45,7 @@ Harness = function() {
             player.enableBufferOccupancyABR(config.abr === 'bola');
             player.setFastSwitchEnabled(config.fastSwitch);
 
-            metrics.createSession(currentSessionInfo);
+            metricsCollection.createSession(currentSessionInfo);
 
             networkModulator.loadProfile(config.profile, function() {
                 player.attachSource(config.url);
@@ -78,6 +79,10 @@ Harness = function() {
             clearTimeout(sessionTimeout);
         }
         sessionTimeout = null;
+    }
+
+    function onManifestLoaded(e) {
+        networkModulator.start();
     }
 
     ////////////////////////////////////////////////
@@ -137,7 +142,7 @@ Harness = function() {
         metricSet.bufferLevel = player.getBufferLength();
         metricSet.playheadTime = player.time();
         metricSet.lastQualityLoaded = isNaN(metricSet.lastQualityLoaded) ? player.getQualityFor('video') : metricSet.lastQualityLoaded;
-        metrics.push(currentSessionInfo.id, metricSet);
+        metricsCollection.push(currentSessionInfo.id, metricSet);
     }
 
     ////////////////////////////////////////////////
