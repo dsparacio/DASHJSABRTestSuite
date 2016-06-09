@@ -7,6 +7,7 @@
 
     <script src="MetricSet.js"></script>
     <script src="SessionInfo.js"></script>
+    <script src="Metrics.js"></script>
 
     <script src="dash.js/dist/dash.all.debug.js"></script>
 
@@ -20,12 +21,13 @@
             mpds = null,
             nextMpdIndex = 0,
             testTimeout = NaN,
-            metricSetDict = {},
+            metrics = null,
             currentSessionInfo = null;
 
 
 
         function init() {
+
             player = dashjs.MediaPlayer().create();
             player.initialize(document.getElementById('video'), null, true);
 
@@ -38,8 +40,7 @@
             player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_START, onQualityChanged);
 
 
-            //player.setFastSwitchEnabled(true);
-            //player.enableBufferOccupancyABR(true);
+            metrics = new Metrics();
 
             //Load playlist and start test
             var xhr = new XMLHttpRequest();
@@ -69,8 +70,7 @@
                 currentSessionInfo.abr = mpdObj.abr;
                 currentSessionInfo.fastSwitch = mpdObj.fastSwitch;
 
-                metricSetDict[currentSessionInfo.id] = metricSetDict[currentSessionInfo.id] || {metrics:[]};
-                metricSetDict[currentSessionInfo.id].sessionInfo = currentSessionInfo;
+                metrics.createSession(currentSessionInfo);
 
                 player.enableBufferOccupancyABR(currentSessionInfo.abr === 'bola');
                 player.setFastSwitchEnabled(currentSessionInfo.fastSwitch);
@@ -139,7 +139,7 @@
             metricSet.bufferLevel = player.getBufferLength();
             metricSet.playheadTime = player.time();
             metricSet.lastQualityLoaded = isNaN(metricSet.lastQualityLoaded) ? player.getQualityFor('video') : metricSet.lastQualityLoaded;
-            metricSetDict[metricSet.sessionInfo.id].metrics.push(metricSet);
+            metrics.push(currentSessionInfo.id, metricSet);
         }
 
         function onPlaybackEnded(e) {
@@ -160,7 +160,7 @@
         }
 
         function onError(e) {
-            var metricSet = new MetricSet();
+            var metricSet = new Metrics();
             metricSet.eventType = e.type;
             //Need more error info here.
             captureMetricSet(metricSet);

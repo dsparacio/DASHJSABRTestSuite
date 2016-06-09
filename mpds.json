@@ -1,6 +1,6 @@
 {
     "mpds": [
-        {"url": "http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd", "test_duration": "100", "abr":"bola", "fastSwitch":true},
+        {"url": "http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd", "test_duration": "10", "abr":"bola", "fastSwitch":true},
         {"url": "http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd", "test_duration": "100", "abr":"default" , "fastSwitch":true},
         {"url": "http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd", "test_duration": "100", "abr":"bola", "fastSwitch":false},
         {"url": "http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd", "test_duration": "100", "abr":"default" , "fastSwitch":false},
