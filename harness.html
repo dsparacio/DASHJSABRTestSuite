@@ -5,60 +5,43 @@
     <title>ABR Test Runner</title>
     <meta name="description" content="" />
 
+    <script src="MetricSet.js"></script>
+    <script src="SessionInfo.js"></script>
+
     <script src="dash.js/dist/dash.all.debug.js"></script>
-    <script src="http://79423.analytics.edgesuite.net/js/csma.js"></script>
-    <script src="akamai/js/DashAkamaiAnalytics.js"></script>
+
+
 
     <script>
-        var AKAMAI_MEDIA_ANALYTICS_CONFIG_FILE_PATH = 'akamai/js/beacon-15785.xml?enableGenericAPI=1',
-            MPDS_JSON_FILE_PATH = 'mpds.json',
+
+        var MPDS_JSON_FILE_PATH = 'mpds.json',
             controlbar,
             player,
             mpds = null,
             nextMpdIndex = 0,
-            timeout = null;
+            testTimeout = NaN,
+            metricSetDict = {},
+            currentSessionInfo = null;
 
-        function getNextMpdObj() {
-            if (!mpds || mpds.length < 1) {
-                return null;
-            }
-            if (nextMpdIndex >= mpds.length) {
-                nextMpdIndex = 0;
-            }
-            var mpd = mpds[nextMpdIndex];
-            ++nextMpdIndex;
-            return mpd;
-        }
 
-        function startTimeout(delayMs) {
-            stopTimeout();
-            timeout = setTimeout(function () {
-                timeout = null;
-                next();
-            }, delayMs);
-        }
-
-        function stopTimeout() {
-            if (timeout) {
-                clearTimeout(timeout);
-            }
-            timeout = null;
-        }
 
         function init() {
             player = dashjs.MediaPlayer().create();
             player.initialize(document.getElementById('video'), null, true);
 
+            player.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, onPlaybackStarted);
             player.on(dashjs.MediaPlayer.events.PLAYBACK_ENDED, onPlaybackEnded);
             player.on(dashjs.MediaPlayer.events.PLAYBACK_ERROR, onError);
             player.on(dashjs.MediaPlayer.events.ERROR, onError);
 
+            player.on(dashjs.MediaPlayer.events.BUFFER_LEVEL_STATE_CHANGED, onBufferStateChange);
+            player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_START, onQualityChanged);
+
+
             //player.setFastSwitchEnabled(true);
             //player.enableBufferOccupancyABR(true);
 
-            var dashAkamaiAnalytics = new AkamaiAnalytics.DashAkamaiAnalytics();
-            dashAkamaiAnalytics.setDashMediaPlayer(player);
-
+            //Load playlist and start test
             var xhr = new XMLHttpRequest();
             xhr.overrideMimeType("application/json");
             xhr.open('GET', MPDS_JSON_FILE_PATH);
@@ -73,35 +56,135 @@
         }
 
         function next() {
-            stopTimeout();
+            stopTestTimeout();
 
             var mpdObj = getNextMpdObj();
             if (mpdObj) {
+
+                currentSessionInfo = new SessionInfo();
+                currentSessionInfo.time = performance.now();
+                currentSessionInfo.wallclockTime = Date.now();
+                currentSessionInfo.mpd = mpdObj.url;
+                currentSessionInfo.id = getGUID();
+                currentSessionInfo.abr = mpdObj.abr;
+                currentSessionInfo.fastSwitch = mpdObj.fastSwitch;
+
+                metricSetDict[currentSessionInfo.id] = metricSetDict[currentSessionInfo.id] || {metrics:[]};
+                metricSetDict[currentSessionInfo.id].sessionInfo = currentSessionInfo;
+
+                player.enableBufferOccupancyABR(currentSessionInfo.abr === 'bola');
+                player.setFastSwitchEnabled(currentSessionInfo.fastSwitch);
                 player.attachSource(mpdObj.url);
-                startTimeout(1000 * mpdObj.duration_s);
+
+                startTestTimeout(mpdObj.test_duration * 1000);
+
             }
         }
 
+        function getNextMpdObj() {
+            if (!mpds || mpds.length < 1) {
+                return null;
+            }
+            if (nextMpdIndex >= mpds.length) {
+                nextMpdIndex = 0;
+            }
+            var mpd = mpds[nextMpdIndex];
+            ++nextMpdIndex;
+            return mpd;
+        }
+
+        function startTestTimeout(delayMs) {
+            stopTestTimeout();
+            testTimeout = setTimeout(function () {
+                testTimeout = null;
+                singleEnded("ended:timeout")
+            }, delayMs);
+        }
+
+        function stopTestTimeout() {
+            if (testTimeout) {
+                clearTimeout(testTimeout);
+            }
+            testTimeout = null;
+        }
+
+        ////////////////////////////////////////////////
+        /// EVENTS & METRICS
+        ////////////////////////////////////////////////
+
+        function onBufferStateChange(e) {
+            if (e.mediaType === 'video') {
+                var metricSet = new MetricSet();
+                metricSet.eventType = e.state;
+                captureMetricSet(metricSet);
+            }
+        }
+
+        function onQualityChanged(e) {
+            if (e.mediaType === 'video') {
+                var metricSet = new MetricSet();
+                metricSet.eventType = e.type;
+                metricSet.lastQualityLoaded = e.oldQuality;
+                metricSet.nextQualityLoading = e.newQuality;
+                metricSet.isUpShiftInQuality = e.oldQuality < e.newQuality;
+                metricSet.bandwidth = "we need bandwidth from event please";
+                captureMetricSet(metricSet);
+            }
+        }
+
+        function captureMetricSet(metricSet) {
+            metricSet.eventTime = performance.now();
+            metricSet.wallclockTime = Date.now();
+            metricSet.sessionInfo = currentSessionInfo;
+            metricSet.bufferLevel = player.getBufferLength();
+            metricSet.playheadTime = player.time();
+            metricSet.lastQualityLoaded = isNaN(metricSet.lastQualityLoaded) ? player.getQualityFor('video') : metricSet.lastQualityLoaded;
+            metricSetDict[metricSet.sessionInfo.id].metrics.push(metricSet);
+        }
+
         function onPlaybackEnded(e) {
+            singleEnded(e.type)
+        }
+
+        function singleEnded(type) {
+            var metricSet = new MetricSet();
+            metricSet.eventType = type;
+            captureMetricSet(metricSet);
             next();
         }
 
+        function onPlaybackStarted(e) {
+            var metricSet = new MetricSet();
+            metricSet.eventType = e.type;
+            captureMetricSet(metricSet);
+        }
+
         function onError(e) {
+            var metricSet = new MetricSet();
+            metricSet.eventType = e.type;
+            //Need more error info here.
+            captureMetricSet(metricSet);
             player.reset();
             next();
         }
 
+        function getGUID() {
+            function s4() {
+                return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+            }
+            return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+        }
 
     </script>
 
     <style>
         video {
-            width: 640px;
-            height: 360px;
+            width: 100%;
+            height: 100%;
         }
     </style>
 
     <body onload="init()" style="background-color:#000000">
-        <video id="video"> </video>
+        <video id="video" controls> </video>
     </body>
 </html>
