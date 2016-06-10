@@ -99,26 +99,6 @@
             }
         }
 
-        function clickTotalDuration() {
-            totalDurationS = parseInt(document.getElementById('fieldTotalDuration').value);
-        }
-
-        function clickProfileResolution() {
-            profileResolutionS = parseInt(document.getElementById('fieldProfileResolution').value);
-        }
-
-        function clickSamplePeriod() {
-            samplePeriodS = parseInt(document.getElementById('fieldSamplePeriod').value);
-        }
-
-        function clickUrl() {
-            url = document.getElementById('fieldUrl').value;
-        }
-
-        function clickMaxBlockBytes() {
-            maxBlockBytes = parseInt(document.getElementById('fieldMaxBlockBytes').value);
-        }
-
         function setRunning(r) {
             running = r;
 
@@ -210,11 +190,7 @@
                     if (totalTimeLeftS <= 0) {
                         profileJson += '\n    ]\n}\n';
                         jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
-
-                        var xhrPost = new XMLHttpRequest();
-                        xhrPost.open('POST', postUrl);
-                        xhrPost.send(profileJson);
-
+                        uploadProfile(profileJson);
                         setRunning(false);
                         return;
                     }
@@ -222,6 +198,13 @@
 
                 nextSample();
             }, nextEventTimeMs - timeReqSentMs);
+        }
+
+        function uploadProfile(profileJson) {
+            // TODO: replace with database update
+            var xhrPost = new XMLHttpRequest();
+            xhrPost.open('POST', postUrl);
+            xhrPost.send(profileJson);
         }
 
     </script>
