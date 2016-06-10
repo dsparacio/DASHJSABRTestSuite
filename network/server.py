@@ -33,7 +33,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
         with open(write_file_path, 'w') as fh:
             fh.write(data.decode())
-        self.path = 'reply.txt'
+        self.path = '/network/reply.txt'
         http.server.SimpleHTTPRequestHandler.do_GET(self)
 
 Handler = MyHandler
