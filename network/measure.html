@@ -6,31 +6,35 @@
     <meta name="description" content="" />
 
     <script>
-        // TODO: pick different default values
-        var totalDurationS = 60;
-        var profileResolutionS = 20;
-        var samplePeriodS = 5;
-        var url = 'http://dash.edgesuite.net/dash264/TestCases/1a/sony/DASH_vodvideo_Track1.m4v';
-        var maxBlockBytes = 1048576;
+        var profileResolutionS = 60;
+        var samplePeriodS = 4;
+
+        var segmentDuration = 4000; // ms
+        var urlPrefix = 'http://dash.edgesuite.net/akamai/bbb_30fps/';
+        var urlPostfix = '_2.m4v';
+        // url = urlPrefix + RepresentationID + '/' + RepresentationID + urlPostfix
+        var representationIndex = NaN; // initialized through init()
+        var representation = [
+            { RepresentationID: 'bbb_30fps_320x180_200k',     size: 119747  },
+            { RepresentationID: 'bbb_30fps_320x180_400k',     size: 234489  },
+            { RepresentationID: 'bbb_30fps_480x270_600k',     size: 346282  },
+            { RepresentationID: 'bbb_30fps_640x360_800k',     size: 461860  },
+            { RepresentationID: 'bbb_30fps_640x360_1000k',    size: 578175  },
+            { RepresentationID: 'bbb_30fps_768x432_1500k',    size: 869475  },
+            { RepresentationID: 'bbb_30fps_1024x576_2500k',   size: 1468268 },
+            { RepresentationID: 'bbb_30fps_1280x720_4000k',   size: 2426613 },
+            { RepresentationID: 'bbb_30fps_1920x1080_8000k',  size: 4854465 },
+            { RepresentationID: 'bbb_30fps_3840x2160_12000k', size: 7207392 },
+        ];
 
         var postUrl = 'http://127.0.0.1:8000/profile.json'; // TODO
 
-        var cacheBreakCounter = new Date().getTime();
+        var cacheBreakCounter = Date.now();
 
-        var totalTimeLeftS;
-        var periodTimeLeftS;
-
-        var nextEventTimeMs;
-        var xhr;
-        var lastProgressEvent;
-        var timeReqSentMs;
-        var timeFirstByteMs;
-        var timeLastProgressMs;
-        var timeReadyMs;
-        var bytesLoaded;
-        var timeout;
-
-        var running;
+        var running = false;
+        var download = null;
+        var timeLeftS = NaN;
+        var timeUntilNextEntryS = NaN;
 
         var averageCount;
         var averageLatencyMs;
@@ -45,73 +49,196 @@
         var textbox;
 
         function init() {
-            document.getElementById('fieldTotalDuration').value = totalDurationS;
-            document.getElementById('fieldProfileResolution').value = profileResolutionS;
-            document.getElementById('fieldSamplePeriod').value = samplePeriodS;
-            document.getElementById('fieldUrl').value = url;
-            document.getElementById('fieldMaxBlockBytes').value = maxBlockBytes;
+            clearAverage();
 
-            setRunning(false);
-        }
+            profileJson = '{\n    "profile": [';
+            delimiterProfileJson = '\n        ';
+            indexProfileJson = 0;
 
-        function clickStartCancel() {
-            if (!running) {
-                setRunning(true);
+            lines = [];
+            jsonbox = document.getElementById('jsonbox');
+            textbox = document.getElementById('textbox');
 
-                totalDurationS = parseInt(document.getElementById('fieldTotalDuration').value);
-                profileResolutionS = parseInt(document.getElementById('fieldProfileResolution').value);
-                samplePeriodS = parseInt(document.getElementById('fieldSamplePeriod').value);
-                url = document.getElementById('fieldUrl').value;
-                maxBlockBytes = parseInt(document.getElementById('fieldMaxBlockBytes').value);
+            startDownload(6, segmentDuration, function (bytesDownloaded, latency, throughput) {
 
-                xhr = null;
-                timeout = null;
-                totalTimeLeftS = totalDurationS;
-                periodTimeLeftS = profileResolutionS;
-    
-                profileJson = '{\n    "profile": [';
-                delimiterProfileJson = '\n        ';
-                indexProfileJson = 0;
-                jsonbox = document.getElementById('jsonbox');
-                jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
-    
-                lines = [];
-                textbox = document.getElementById('textbox');
-                textbox.innerHTML = '';
-
-                clearAverage();
-                nextEventTimeMs = new Date().getTime(); // nextEventTimeMs will be calculated using previous value to avoid drift
-                nextSample();
-            } else {
-                running = false;
-                setRunning(false);
-                document.getElementById('buttonStartCancel').innerHTML = 'Start';
-
-                if (timeout) {
-                    clearTimeout(timeout);
-                    timeout = null;
+                if (bytesDownloaded === 0) {
+                    // TODO: report error
+                    return;
                 }
 
-                if (xhr) {
-                   xhr.abort();
-                   xhr = null;
+                var size = 0.9 * (segmentDuration - latency) * throughput / 0.008;
+                representationIndex = 0;
+                while (representationIndex + 1 < representation.length && representation[representationIndex + 1].size <= size) {
+                    ++representationIndex;
+                }
+
+                document.getElementById('status').innerHTML = '';
+                document.getElementById('button_start_cancel').disabled = false;
+            }, true);
+        }
+
+        function generateUrl(representationIndex) {
+            var RepresentationID = representation[representationIndex].RepresentationID;
+            var url = urlPrefix + RepresentationID + '/' + RepresentationID + urlPostfix + '?nocache=' + cacheBreakCounter;
+            ++cacheBreakCounter;
+            return url;
+        }
+
+        function startDownload(representationIndex, duration, callback, fastExit) { // callback(bytesDownloaded, latency, throughput)
+            var timeReqSentMs      = Date.now();
+            var timeFirstByteMs    = null;
+            var timeLastProgressMs = null;
+            var timeReadyMs        = null;
+            var bytesLoaded = 0;
+            var timeout = null;
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', generateUrl(representationIndex), true);
+            xhr.overrideMimeType('text/plain; charset=x-user-defined');
+
+            xhr.onprogress = function (e) {
+                if (e.loaded > 0) {
+                    bytesLoaded = e.loaded;
+                    timeLastProgressMs = Date.now();
+                    if (!timeFirstByteMs) {
+                        timeFirstByteMs = timeLastProgressMs - 1; // avoid remote possibility of division by zero
+                    }
+                }
+            };
+
+            xhr.onload = function (e) {
+                bytesLoaded = e.loaded;
+                timeReadyMs = Date.now();
+                if (fastExit) {
+                    clearTimeout(timeout);
+                    callback(bytesLoaded, timeFirstByteMs - timeReqSentMs, 0.008 * bytesLoaded / (timeReadyMs - timeFirstByteMs));
+                    return {xhr: null, timeout: null};
+                }
+            };
+
+            timeout = setTimeout(function () {
+                if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300) {
+                    callback(bytesLoaded, timeFirstByteMs - timeReqSentMs, 0.008 * bytesLoaded / (timeReadyMs - timeFirstByteMs));
+                } else if (xhr.readyState === 3 && bytesLoaded > 0) {
+                    xhr.abort();
+                    callback(bytesLoaded, timeFirstByteMs - timeReqSentMs, 0.008 * bytesLoaded / (timeLastProgressMs - timeFirstByteMs));
+                } else {
+                    xhr.abort();
+                    callback(0, 0, 0);
+                }
+            }, duration);
+
+            xhr.send();
+
+            return {xhr: xhr, timeout: timeout};
+        }
+
+        function cancelDownload(download) {
+            if (download) {
+                if (download.xhr) {
+                    download.xhr.abort();
+                }
+                if (download.timeout) {
+                    clearTimeout(download.timeout);
                 }
             }
         }
 
-        function setRunning(r) {
-            running = r;
-
-            document.getElementById('fieldTotalDuration').disabled = r;
-            document.getElementById('fieldProfileResolution').disabled = r;
-            document.getElementById('fieldSamplePeriod').disabled = r;
-            document.getElementById('fieldUrl').disabled = r;
-            document.getElementById('fieldMaxBlockBytes').disabled = r;
-
-            if (r) {
-                document.getElementById('buttonStartCancel').innerHTML = 'Cancel';
+        function formatTime(timeS) {
+            var str = '';
+            if (timeS <= 0) {
+                return str;
+            }
+            if (timeS > 60) {
+                str = Math.floor(timeS / 60) + ':';
+                timeS %= 60;
             } else {
-                document.getElementById('buttonStartCancel').innerHTML = 'Start';
+                str = '0:';
+            }
+            if (timeS < 10) {
+                str += '0';
+            }
+            str += timeS;
+            return str;
+        }
+
+        function nextDownload() {
+            download = startDownload(representationIndex, segmentDuration, function (bytesDownloaded, latency, throughput) {
+                updateAverage(latency, throughput);
+                lines.push('latency: ' + latency + ' ms, throughput: ' + throughput.toFixed(3) + ' Mbps');
+                textbox.innerHTML = lines.join('<br/>');
+
+                timeUntilNextEntryS -= samplePeriodS;
+                if (timeUntilNextEntryS <= 0) {
+                    profileJson += delimiterProfileJson + '{"index": "' + indexProfileJson + '", "duration_s": "' + profileResolutionS.toFixed(0) + '", "latency_ms": "' + averageLatencyMs.toFixed(0) + '", "throughput_Mbps": "' + averageThroughputMbps.toFixed(3) + '"}';
+                    delimiterProfileJson = ',\n        ';
+                    ++indexProfileJson;
+                    jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
+
+                    clearAverage();
+
+                    lines.push('');
+
+                    timeUntilNextEntryS = profileResolutionS;
+                    timeLeftS -= profileResolutionS;
+
+                    if (timeLeftS <= 0) {
+                        profileJson += '\n    ]\n}\n';
+                        jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
+
+                        document.getElementById('text_name').disabled = true;
+                        document.getElementById('text_email').disabled = true;
+                        document.getElementById('button_start_cancel').disabled = true;
+                        document.getElementById('status').innerHTML = 'Test complete. Thank you ' + name + ' &lt;' + email + '&gt;';
+
+                        // TODO: clean name and email entries from special characters?
+                        var name = document.getElementById('text_name').value;
+                        var email = document.getElementById('text_email').value;
+
+                        uploadProfile(profileJson);
+
+                        running = false;
+                        return; // stop download cycle here
+                    }
+                }
+
+                document.getElementById('status').innerHTML = 'Running test ... ' + formatTime(timeLeftS - profileResolutionS + timeUntilNextEntryS);
+                nextDownload();
+            });
+        }
+
+        function clickStartCancel() {
+            if (running) {
+                running = false;
+                cancelDownload(download);
+                document.getElementById('button_start_cancel').disabled = true;
+                document.getElementById('status').innerHTML = 'Test cancelled';
+            } else {
+                running = true;
+
+                document.getElementById('button_start_cancel').innerHTML = 'Cancel';
+
+                document.getElementById('duration15').disabled = true;
+                document.getElementById('duration30').disabled = true;
+                document.getElementById('duration60').disabled = true;
+
+                timeLeftS = 900;
+                if (document.getElementById('duration15').checked) {
+                    timeLeftS = 900;
+                }
+                else if (document.getElementById('duration30').checked) {
+                    timeLeftS = 1800;
+                }
+                else if (document.getElementById('duration60').checked) {
+                    timeLeftS = 3600;
+                }
+
+                document.getElementById('status').innerHTML = 'Running test ... ' + formatTime(timeLeftS);
+
+                timeUntilNextEntryS = profileResolutionS;
+
+                clearAverage();
+                nextDownload();
             }
         }
 
@@ -121,83 +248,10 @@
             averageThroughputMbps = 0.0;
         }
 
-        function updateAverageLatencyMsThroughputMbps(latencyMs, throughputMbps) {
+        function updateAverage(latencyMs, throughputMbps) {
             ++averageCount;
             averageLatencyMs += (latencyMs - averageLatencyMs) / averageCount;
             averageThroughputMbps += (throughputMbps - averageThroughputMbps) / averageCount;
-        }
-
-        function nextSample() {
-            xhr = new XMLHttpRequest();
-            xhr.open('GET', url + '?nocache=' + cacheBreakCounter);
-            ++cacheBreakCounter;
-            xhr.overrideMimeType('text/plain; charset=x-user-defined');
-            xhr.setRequestHeader("Range", "bytes=0-" + (maxBlockBytes - 1));
-
-            xhr.onprogress = function (e) {
-                if (e.loaded > 0) {
-                    bytesLoaded = e.loaded;
-                    timeLastProgressMs = new Date().getTime();
-                    if (!timeFirstByteMs) {
-                        timeFirstByteMs = timeLastProgressMs;
-                    }
-                }
-            };
-
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4 && (xhr.status === 200 || xhr.status === 206) && !timeReadyMs) {
-                    bytesLoaded = xhr.response.length;
-                    timeReadyMs = new Date().getTime();
-                }
-            };
-
-            timeReqSentMs = new Date().getTime();
-            timeFirstByteMs = null;
-            timeLastProgressMs = null;
-            timeReadyMs = null;
-            bytesLoaded = 0;
-            xhr.send();
-
-            nextEventTimeMs += 1000 * samplePeriodS;
-            timeout = setTimeout(function () {
-                if (xhr.readyState === 4 && (xhr.status === 200 || xhr.status === 206)) {
-                    updateAverageLatencyMsThroughputMbps(timeFirstByteMs - timeReqSentMs, 0.008 * bytesLoaded / (timeReadyMs - timeFirstByteMs + 1));
-                    lines.push('latency: ' + (timeFirstByteMs - timeReqSentMs) + ' ms, throughput: ' + (0.008 * bytesLoaded / (timeReadyMs - timeFirstByteMs)).toFixed(3) + ' Mbps');
-                } else if (xhr.readyState === 3 && bytesLoaded > 0 && timeFirstByteMs < timeLastProgressMs) {
-                    updateAverageLatencyMsThroughputMbps(timeFirstByteMs - timeReqSentMs, 0.008 * bytesLoaded / (timeLastProgressMs - timeFirstByteMs + 1));
-                    lines.push('latency: ' + (timeFirstByteMs - timeReqSentMs) + ' ms, throughput: ' + (0.008 * bytesLoaded / (timeLastProgressMs - timeFirstByteMs)).toFixed(3) + ' Mbps');
-                    xhr.abort();
-                } else {
-                    lines.push('*');
-                    xhr.abort();
-                }
-                xhr = null;
-                textbox.innerHTML = lines.join('<br/>');
-
-                periodTimeLeftS -= samplePeriodS;
-                if (periodTimeLeftS <= 0) {
-                    profileJson += delimiterProfileJson + '{"index": "' + indexProfileJson + '", "duration_s": "' + profileResolutionS.toFixed(0) + '", "latency_ms": "' + averageLatencyMs.toFixed(0) + '", "throughput_Mbps": "' + averageThroughputMbps.toFixed(3) + '"}';
-                    delimiterProfileJson = ',\n        ';
-                    ++indexProfileJson;
-                    jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
-                    clearAverage();
-
-                    lines.push('');
-
-                    periodTimeLeftS = profileResolutionS;
-                    totalTimeLeftS -= profileResolutionS;
-
-                    if (totalTimeLeftS <= 0) {
-                        profileJson += '\n    ]\n}\n';
-                        jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
-                        uploadProfile(profileJson);
-                        setRunning(false);
-                        return;
-                    }
-                }
-
-                nextSample();
-            }, nextEventTimeMs - timeReqSentMs);
         }
 
         function uploadProfile(profileJson) {
@@ -210,24 +264,22 @@
     </script>
 
     <body onload="init()">
-        <input id="fieldTotalDuration" type="text" size="50" placeholder="Total duration (s)" />
-        Total duration
+        <input id="text_name" type="text" size="50" placeholder="Enter name here" />
+        Name
         <br/>
-        <input id="fieldProfileResolution" type="text" size="50" placeholder="Profile resolution (s)" />
-        Profile resolution
+        <input id="text_email" type="text" size="50" placeholder="Enter email address here" />
+        Email address
         <br/>
-        <input id="fieldSamplePeriod" type="text" size="50" placeholder="Sample period (s)" />
-        Sample period
+        <input id="duration15" type="radio" name="duration" checked />15
+        <input id="duration30" type="radio" name="duration" />30
+        <input id="duration60" type="radio" name="duration" />60 minutes
         <br/>
-        <input id="fieldUrl" type="text" size="50" placeholder="Download URL" />
-        Download URL
+        <button id="button_start_cancel" type="button" onclick="clickStartCancel()" disabled>Start</button>
+        <span id="status">Initializing ...</span>
         <br/>
-        <input id="fieldMaxBlockBytes" type="text" size="50" placeholder="Sample size (bytes)" />
-        Sample size
+        <div id="jsonbox"></div>
         <br/>
-
-        <button id="buttonStartCancel" type="button" onclick="clickStartCancel()">Start</button><br/>
-        <div id="jsonbox"></div><br/>
-        <div id="textbox"></div><br/>
+        <div id="textbox"></div>
+        <br/>
     </body>
 </html>
