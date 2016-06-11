@@ -11,8 +11,8 @@
 
         var segmentDuration = 4000; // ms
         var urlPrefix = 'http://dash.edgesuite.net/akamai/bbb_30fps/';
-        var urlPostfix = '_2.m4v';
-        // url = urlPrefix + RepresentationID + '/' + RepresentationID + urlPostfix
+        var urlSuffix = '_2.m4v';
+        // url = urlPrefix + RepresentationID + '/' + RepresentationID + urlSuffix
         var representationIndex = NaN; // initialized through init()
         var representation = [
             { RepresentationID: 'bbb_30fps_320x180_200k',     size: 119747  },
@@ -79,7 +79,7 @@
 
         function generateUrl(representationIndex) {
             var RepresentationID = representation[representationIndex].RepresentationID;
-            var url = urlPrefix + RepresentationID + '/' + RepresentationID + urlPostfix + '?nocache=' + cacheBreakCounter;
+            var url = urlPrefix + RepresentationID + '/' + RepresentationID + urlSuffix + '?nocache=' + cacheBreakCounter;
             ++cacheBreakCounter;
             return url;
         }
