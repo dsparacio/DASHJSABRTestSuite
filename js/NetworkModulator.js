@@ -2,7 +2,7 @@
 
 NetworkModulator = function() {
 
-    var PROXY_CONTROL_URL = 'http://127.0.0.1:8080/proxy/8008/limit';
+    var PROXY_CONTROL_URL = 'http://localhost:8080/proxy/8008/limit';
     var profile = null;
     var currentProfileIndex = NaN;
     var profileStepTimeout = null;
@@ -47,9 +47,11 @@ NetworkModulator = function() {
     function setProxyThroughput(mbps, latency) {
         var kBps = Math.ceil(mbps / 0.008); // kilobytes per second
         var xhr = new XMLHttpRequest();
+        
+
         var url = PROXY_CONTROL_URL;
         var params = "upstreamKbps=" + kBps + "&latency=" + latency;
-        xhr.open("PUT", url);
+        xhr.open("POST", url);
         xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         //todo error check to make sure we are setting the proxy throughput
         xhr.send(params);

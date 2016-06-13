@@ -1,4 +1,4 @@
-Metrics = function() {
+MetricsCollection = function() {
 
     var dict = {};
 
@@ -26,6 +26,6 @@ Metrics = function() {
     }
 }
 
-Metrics.prototype = {
-    constructor: Metrics
+MetricsCollection.prototype = {
+    constructor: MetricsCollection
 };
