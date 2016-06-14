@@ -250,7 +250,7 @@
         function updateEstimateData() {
             var s = representation[representationIndex].size * getTotalTime() / samplePeriodS;
             s += representation[initialEstimateRepresentationIndex].size;
-            document.getElementById('estimate').innerHTML = '&emsp; Data estimate: ' + Math.ceil(0.000001 * s) + ' MB';
+            document.getElementById('estimate').innerHTML = 'Data estimate: ' + Math.ceil(0.000001 * s) + ' MB';
         }
 
         function uploadProfile(profile) {
@@ -258,7 +258,7 @@
             service.addToDocument("email", document.getElementById('text_email').value);
             service.addToDocument("end_epoch", Date.now());
             service.addToDocument("networkType", getNetworkType());
-            //service.addToDocument("testUrl", generateUrl(representationIndex, true));
+            // service.addToDocument("testUrl", generateUrl(representationIndex, true));
             service.addToDocument("profile", profile);
             service.saveDocumentToDB();
         }
@@ -288,7 +288,7 @@
         Test duration:
         <input id="duration15" type="radio" name="duration" onclick="updateEstimateData()" checked />15
         <input id="duration30" type="radio" name="duration" onclick="updateEstimateData()" />30
-        <input id="duration60" type="radio" name="duration" onclick="updateEstimateData()" />60 minutes
+        <input id="duration60" type="radio" name="duration" onclick="updateEstimateData()" />60 minutes &emsp;
         <span id="estimate"></span>
         <br/>
         <button id="button_start" type="button" onclick="clickStart()" disabled>Start</button>
