@@ -5,6 +5,11 @@
     <title>Network Measurement</title>
     <meta name="description" content="" />
 
+    <script src="../libs/jquery/jquery.js"></script>
+    <script src="../libs/jquery/jquery.couch.js"></script>
+    <script src="NetworkProfilerService.js"></script>
+    <script src="ProfilerDBDocument.js"></script>
+
     <script>
         var profileResolutionS = 60;
         var samplePeriodS = 4;
@@ -48,6 +53,8 @@
         var jsonbox;
         var textbox;
 
+        var service = new NetworkProfilerService();
+
         function init() {
             clearAverage();
 
@@ -59,22 +66,28 @@
             jsonbox = document.getElementById('jsonbox');
             textbox = document.getElementById('textbox');
 
-            startDownload(6, segmentDuration, function (bytesDownloaded, latency, throughput) {
 
-                if (bytesDownloaded === 0) {
-                    // TODO: report error
-                    return;
-                }
+            service.getDeviceInfo(function() {
 
-                var size = 0.9 * (segmentDuration - latency) * throughput / 0.008;
-                representationIndex = 0;
-                while (representationIndex + 1 < representation.length && representation[representationIndex + 1].size <= size) {
-                    ++representationIndex;
-                }
+                startDownload(6, segmentDuration, function (bytesDownloaded, latency, throughput) {
 
-                document.getElementById('status').innerHTML = '';
-                document.getElementById('button_start_cancel').disabled = false;
-            }, true);
+                    if (bytesDownloaded === 0) {
+                        // TODO: report error
+                        return;
+                    }
+
+                    var size = 0.9 * (segmentDuration - latency) * throughput / 0.008;
+                    representationIndex = 0;
+                    while (representationIndex + 1 < representation.length && representation[representationIndex + 1].size <= size) {
+                        ++representationIndex;
+                    }
+
+                    document.getElementById('status').innerHTML = '';
+                    document.getElementById('button_start_cancel').disabled = false;
+                }, true);
+            })
+
+
         }
 
         function generateUrl(representationIndex) {
@@ -191,10 +204,6 @@
                         document.getElementById('button_start_cancel').disabled = true;
                         document.getElementById('status').innerHTML = 'Test complete. Thank you ' + name + ' &lt;' + email + '&gt;';
 
-                        // TODO: clean name and email entries from special characters?
-                        var name = document.getElementById('text_name').value;
-                        var email = document.getElementById('text_email').value;
-
                         uploadProfile(profileJson);
 
                         running = false;
@@ -213,8 +222,12 @@
                 cancelDownload(download);
                 document.getElementById('button_start_cancel').disabled = true;
                 document.getElementById('status').innerHTML = 'Test cancelled';
+
             } else {
+
                 running = true;
+
+                service.addToDocument("start_epoch", Date.now());
 
                 document.getElementById('button_start_cancel').innerHTML = 'Cancel';
 
@@ -254,11 +267,20 @@
             averageThroughputMbps += (throughputMbps - averageThroughputMbps) / averageCount;
         }
 
-        function uploadProfile(profileJson) {
-            // TODO: replace with database update
-            var xhrPost = new XMLHttpRequest();
-            xhrPost.open('POST', postUrl);
-            xhrPost.send(profileJson);
+        function uploadProfile(profile) {
+            service.addToDocument("username", document.getElementById('text_name').value);
+            service.addToDocument("email", document.getElementById('text_email').value);
+            service.addToDocument("end_epoch", Date.now());
+            service.addToDocument("profile", profile);
+            service.saveDocumentToDB();
+        }
+
+
+        function getGUID() {
+            function s4() {
+                return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+            }
+            return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
         }
 
     </script>

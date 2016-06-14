@@ -11,10 +11,6 @@ Harness = function() {
 
     function init() {
 
-
-        var networkProfilerService = new NetworkProfilerService();
-        networkProfilerService.init();
-
         player = dashjs.MediaPlayer().create();
         player.initialize(document.getElementById('video'), null, true);
         player.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, onPlaybackStarted);
