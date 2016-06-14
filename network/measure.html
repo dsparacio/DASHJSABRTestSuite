@@ -11,10 +11,9 @@
     <script src="ProfilerDBDocument.js"></script>
 
     <script>
-        var profileResolutionS = 60;
-        var samplePeriodS = 4;
+        var samplePeriodS = 5;
+        var initialEstimateRepresentationIndex = 5;
 
-        var segmentDuration = 4000; // ms
         var urlPrefix = 'http://dash.edgesuite.net/akamai/bbb_30fps/';
         var urlSuffix = '_2.m4v';
         // url = urlPrefix + RepresentationID + '/' + RepresentationID + urlSuffix
@@ -32,68 +31,59 @@
             { RepresentationID: 'bbb_30fps_3840x2160_12000k', size: 7207392 },
         ];
 
-        var postUrl = 'http://127.0.0.1:8000/profile.json'; // TODO
-
         var cacheBreakCounter = Date.now();
 
         var running = false;
         var download = null;
         var timeLeftS = NaN;
-        var timeUntilNextEntryS = NaN;
-
-        var averageCount;
-        var averageLatencyMs;
-        var averageThroughputMbps;
 
         var profileJson;
         var delimiterProfileJson;
         var indexProfileJson;
 
         var lines;
-        var jsonbox;
         var textbox;
 
         var service = new NetworkProfilerService();
 
         function init() {
-            clearAverage();
-
             profileJson = '{\n    "profile": [';
             delimiterProfileJson = '\n        ';
             indexProfileJson = 0;
 
             lines = [];
-            jsonbox = document.getElementById('jsonbox');
             textbox = document.getElementById('textbox');
-
 
             service.getDeviceInfo(function() {
 
-                startDownload(6, segmentDuration, function (bytesDownloaded, latency, throughput) {
-
+                startDownload(initialEstimateRepresentationIndex, 1000 * samplePeriodS, function (bytesDownloaded, latency, throughput) {
                     if (bytesDownloaded === 0) {
                         // TODO: report error
                         return;
                     }
+                    var size = 0.9 * (1000 * samplePeriodS - latency) * throughput / 0.008;
 
-                    var size = 0.9 * (segmentDuration - latency) * throughput / 0.008;
                     representationIndex = 0;
                     while (representationIndex + 1 < representation.length && representation[representationIndex + 1].size <= size) {
                         ++representationIndex;
                     }
 
+                    updateEstimateData();
+
                     document.getElementById('status').innerHTML = '';
-                    document.getElementById('button_start_cancel').disabled = false;
+                    document.getElementById('button_start').disabled = false;
                 }, true);
             })
 
-
         }
 
-        function generateUrl(representationIndex) {
+        function generateUrl(representationIndex, disableCacheBreak) {
             var RepresentationID = representation[representationIndex].RepresentationID;
-            var url = urlPrefix + RepresentationID + '/' + RepresentationID + urlSuffix + '?nocache=' + cacheBreakCounter;
-            ++cacheBreakCounter;
+            var url = urlPrefix + RepresentationID + '/' + RepresentationID + urlSuffix;
+            if (!disableCacheBreak) {
+                url += '?nocache=' + cacheBreakCounter;
+                ++cacheBreakCounter;
+            }
             return url;
         }
 
@@ -176,105 +166,102 @@
         }
 
         function nextDownload() {
-            download = startDownload(representationIndex, segmentDuration, function (bytesDownloaded, latency, throughput) {
-                updateAverage(latency, throughput);
-                lines.push('latency: ' + latency + ' ms, throughput: ' + throughput.toFixed(3) + ' Mbps');
+            download = startDownload(representationIndex, 1000 * samplePeriodS, function (bytesDownloaded, latency, throughput) {
+                lines.push('[' + indexProfileJson + '] latency: ' + latency + ' ms, throughput: ' + throughput.toFixed(3) + ' Mbps');
                 textbox.innerHTML = lines.join('<br/>');
 
-                timeUntilNextEntryS -= samplePeriodS;
-                if (timeUntilNextEntryS <= 0) {
-                    profileJson += delimiterProfileJson + '{"index": "' + indexProfileJson + '", "duration_s": "' + profileResolutionS.toFixed(0) + '", "latency_ms": "' + averageLatencyMs.toFixed(0) + '", "throughput_Mbps": "' + averageThroughputMbps.toFixed(3) + '"}';
-                    delimiterProfileJson = ',\n        ';
-                    ++indexProfileJson;
-                    jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
+                profileJson += delimiterProfileJson + '{"index": "' + indexProfileJson + '", "duration_s": "' + samplePeriodS.toFixed(0) + '", "latency_ms": "' + latency.toFixed(0) + '", "throughput_Mbps": "' + throughput.toFixed(3) + '"}';
+                delimiterProfileJson = ',\n        ';
+                ++indexProfileJson;
 
-                    clearAverage();
+                timeLeftS -= samplePeriodS;
 
-                    lines.push('');
+                if (timeLeftS <= 0) {
+                    profileJson += '\n    ]\n}\n';
 
-                    timeUntilNextEntryS = profileResolutionS;
-                    timeLeftS -= profileResolutionS;
+                    document.getElementById('text_name').disabled = true;
+                    document.getElementById('text_email').disabled = true;
+                    document.getElementById('connection_type_3G').disabled = true;
+                    document.getElementById('connection_type_4G').disabled = true;
+                    document.getElementById('connection_type_WiFi').disabled = true;
+                    document.getElementById('connection_type_wired').disabled = true;
+                    document.getElementById('button_start').disabled = true;
+                    document.getElementById('status').innerHTML = 'Test complete. Thank you.';
 
-                    if (timeLeftS <= 0) {
-                        profileJson += '\n    ]\n}\n';
-                        jsonbox.innerHTML = '<pre>' + profileJson + '</pre>';
+                    uploadProfile(profileJson);
 
-                        document.getElementById('text_name').disabled = true;
-                        document.getElementById('text_email').disabled = true;
-                        document.getElementById('button_start_cancel').disabled = true;
-                        document.getElementById('status').innerHTML = 'Test complete. Thank you ' + name + ' &lt;' + email + '&gt;';
-
-                        uploadProfile(profileJson);
-
-                        running = false;
-                        return; // stop download cycle here
-                    }
+                    running = false;
+                    return; // stop download cycle here
                 }
 
-                document.getElementById('status').innerHTML = 'Running test ... ' + formatTime(timeLeftS - profileResolutionS + timeUntilNextEntryS);
+                document.getElementById('status').innerHTML = 'Running test ... ' + formatTime(timeLeftS);
                 nextDownload();
             });
         }
 
-        function clickStartCancel() {
-            if (running) {
-                running = false;
-                cancelDownload(download);
-                document.getElementById('button_start_cancel').disabled = true;
-                document.getElementById('status').innerHTML = 'Test cancelled';
+        function clickStart() {
+            running = true;
 
-            } else {
+            service.addToDocument("start_epoch", Date.now());
 
-                running = true;
+            document.getElementById('button_start').disabled = true;
 
-                service.addToDocument("start_epoch", Date.now());
+            document.getElementById('duration15').disabled = true;
+            document.getElementById('duration30').disabled = true;
+            document.getElementById('duration60').disabled = true;
 
-                document.getElementById('button_start_cancel').innerHTML = 'Cancel';
+            timeLeftS = getTotalTime();
 
-                document.getElementById('duration15').disabled = true;
-                document.getElementById('duration30').disabled = true;
-                document.getElementById('duration60').disabled = true;
+            document.getElementById('status').innerHTML = 'Running test ... ' + formatTime(timeLeftS);
 
-                timeLeftS = 900;
-                if (document.getElementById('duration15').checked) {
-                    timeLeftS = 900;
-                }
-                else if (document.getElementById('duration30').checked) {
-                    timeLeftS = 1800;
-                }
-                else if (document.getElementById('duration60').checked) {
-                    timeLeftS = 3600;
-                }
+            nextDownload();
+        }
 
-                document.getElementById('status').innerHTML = 'Running test ... ' + formatTime(timeLeftS);
+        function getTotalTime() {
+            var t = NaN;
+            if (document.getElementById('duration15').checked) {
+                t = 900;
+            }
+            else if (document.getElementById('duration30').checked) {
+                t = 1800;
+            }
+            else if (document.getElementById('duration60').checked) {
+                t = 3600;
+            }
+            return t;
+        }
 
-                timeUntilNextEntryS = profileResolutionS;
-
-                clearAverage();
-                nextDownload();
+        function getNetworkType() {
+            var type = null;
+            if (document.getElementById('connection_type_3G').checked) {
+                type = '3G';
+            }
+            else if (document.getElementById('connection_type_4G').checked) {
+                type = '4G';
+            }
+            else if (document.getElementById('connection_type_WiFi').checked) {
+                type = 'WiFi';
+            }
+            else if (document.getElementById('connection_type_wired').checked) {
+                type = 'wired';
             }
         }
 
-        function clearAverage() {
-            averageCount = 0;
-            averageLatencyMs = 0.0;
-            averageThroughputMbps = 0.0;
-        }
-
-        function updateAverage(latencyMs, throughputMbps) {
-            ++averageCount;
-            averageLatencyMs += (latencyMs - averageLatencyMs) / averageCount;
-            averageThroughputMbps += (throughputMbps - averageThroughputMbps) / averageCount;
+        function updateEstimateData() {
+            var s = representation[representationIndex].size * getTotalTime() / samplePeriodS;
+            s += representation[initialEstimateRepresentationIndex].size;
+            document.getElementById('estimate').innerHTML = '&emsp; Data estimate: ' + Math.ceil(0.000001 * s) + ' MB';
         }
 
         function uploadProfile(profile) {
             service.addToDocument("username", document.getElementById('text_name').value);
             service.addToDocument("email", document.getElementById('text_email').value);
             service.addToDocument("end_epoch", Date.now());
+            service.addToDocument("networkType", getNetworkType());
+            //service.addToDocument("testUrl", generateUrl(representationIndex, true));
             service.addToDocument("profile", profile);
             service.saveDocumentToDB();
         }
-
 
         function getGUID() {
             function s4() {
@@ -292,14 +279,20 @@
         <input id="text_email" type="text" size="50" placeholder="Enter email address here" />
         Email address
         <br/>
-        <input id="duration15" type="radio" name="duration" checked />15
-        <input id="duration30" type="radio" name="duration" />30
-        <input id="duration60" type="radio" name="duration" />60 minutes
+        Connection type:
+        <input id="connection_type_3G" type="radio" name="connection_type" />3G
+        <input id="connection_type_4G" type="radio" name="connection_type" />4G
+        <input id="connection_type_WiFi" type="radio" name="connection_type" />WiFi
+        <input id="connection_type_wired" type="radio" name="connection_type" />wired
         <br/>
-        <button id="button_start_cancel" type="button" onclick="clickStartCancel()" disabled>Start</button>
+        Test duration:
+        <input id="duration15" type="radio" name="duration" onclick="updateEstimateData()" checked />15
+        <input id="duration30" type="radio" name="duration" onclick="updateEstimateData()" />30
+        <input id="duration60" type="radio" name="duration" onclick="updateEstimateData()" />60 minutes
+        <span id="estimate"></span>
+        <br/>
+        <button id="button_start" type="button" onclick="clickStart()" disabled>Start</button>
         <span id="status">Initializing ...</span>
-        <br/>
-        <div id="jsonbox"></div>
         <br/>
         <div id="textbox"></div>
         <br/>
