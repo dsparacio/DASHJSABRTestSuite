@@ -1,4 +1,4 @@
-Harness = function() {
+Harness = function () {
 
     var SESSIONS_JSON_FILE = 'session_config.json';
     var player = null;
@@ -6,11 +6,11 @@ Harness = function() {
     var nextConfigIndex = 0;
     var sessionTimeout = NaN;
     var metricsCollection = null;
+    var metricsCollectionService = null;
     var networkModulator = null;
     var currentSessionInfo = null;
 
     function init() {
-
         player = dashjs.MediaPlayer().create();
         player.initialize(document.getElementById('video'), null, true);
         player.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, onPlaybackStarted);
@@ -21,8 +21,9 @@ Harness = function() {
         player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_START, onQualityChanged);
         player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, onManifestLoaded)
 
-        metricsCollection = new MetricsCollection();
         networkModulator = new NetworkModulator();
+        metricsCollection = new MetricsCollection();
+        metricsCollectionService = new MetricsCollectionService();
         loadSessionConfig();
     }
 
@@ -30,8 +31,17 @@ Harness = function() {
         stopSessionTimeout();
         networkModulator.stop();
 
+        metricsCollection
+
         var config = getNextSessionConfig();
         if (config) {
+
+            function initializePlayback() {
+                player.attachSource(config.url);
+                var metricSet = new MetricSet();
+                metricSet.eventType = "playbackInitiated";
+                captureMetricSet(metricSet);
+            }
 
             currentSessionInfo = new SessionInfo();
             currentSessionInfo.time = performance.now();
@@ -46,10 +56,7 @@ Harness = function() {
             player.setFastSwitchEnabled(config.fastSwitch);
 
             metricsCollection.createSession(currentSessionInfo);
-
-            networkModulator.loadProfile(config.profile, function() {
-                player.attachSource(config.url);
-            });
+            networkModulator.loadProfile(config.profile, initializePlayback);
 
             startSessionTimeout(config.test_duration);
         }
@@ -139,9 +146,11 @@ Harness = function() {
         metricSet.eventTime = performance.now();
         metricSet.wallclockTime = Date.now();
         metricSet.sessionInfo = currentSessionInfo;
-        metricSet.bufferLevel = player.getBufferLength();
-        metricSet.playheadTime = player.time();
-        metricSet.lastQualityLoaded = isNaN(metricSet.lastQualityLoaded) ? player.getQualityFor('video') : metricSet.lastQualityLoaded;
+        if (player.isReady()) {
+            metricSet.bufferLevel = player.getBufferLength();
+            metricSet.playheadTime = player.time();
+            metricSet.lastQualityLoaded = isNaN(metricSet.lastQualityLoaded) ? player.getQualityFor('video') || player.getQualityFor('audio') : metricSet.lastQualityLoaded;
+        }
         metricsCollection.push(currentSessionInfo.id, metricSet);
     }
 
@@ -153,7 +162,7 @@ Harness = function() {
         var xhr = new XMLHttpRequest();
         xhr.overrideMimeType("application/json");
         xhr.open('GET', SESSIONS_JSON_FILE);
-        xhr.onloadend = function() {
+        xhr.onloadend = function () {
             // TODO: check for errors
             if (xhr.status >= 200 && xhr.status <= 299) {
                 configs = JSON.parse(xhr.responseText).configs;
@@ -167,6 +176,7 @@ Harness = function() {
         function s4() {
             return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
         }
+
         return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
     }
 
