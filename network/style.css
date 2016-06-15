@@ -1,0 +1,48 @@
+html, body {
+    margin: 10px 10px;
+}
+
+
+
+div#duration_wrapper {
+}
+
+div#connection_wrapper{
+}
+
+div#name_wrapper {
+    clear: right;
+    float: left;
+    margin-right: 20px;
+}
+
+div#main_wrapper{
+    width: 505px;
+    padding: 20px 20px;
+    background-color: #00589d;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: .9em;
+    font-weight: 400;
+    color: #FFF;
+}
+
+input[type="radio"] {
+    display: inline-block;
+    margin-right: 7px;
+}
+
+.label_padding {
+    margin-right: 10px;
+}
+
+div#h_spacer {
+    height: 8px;
+}
+
+div#textbox {
+    padding: 5px;
+    background-color: #FFFFFF;
+    height: 500px;
+    overflow: auto;
+    color: #000;
+}

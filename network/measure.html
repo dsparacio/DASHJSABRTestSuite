@@ -4,7 +4,7 @@
     <meta charset="utf-8"/>
     <title>Network Measurement</title>
     <meta name="description" content="" />
-
+    <link href="style.css" rel="stylesheet" media="screen">
     <script src="../libs/jquery/jquery.js"></script>
     <script src="../libs/jquery/jquery.couch.js"></script>
     <script src="../libs/jquery/pgwbrowser.min.js"></script>
@@ -235,6 +235,7 @@
         }
 
         function getNetworkType() {
+
             var type = null;
             if (document.getElementById('connection_type_3G').checked) {
                 type = '3G';
@@ -275,29 +276,39 @@
     </script>
 
     <body onload="init()">
-        <input id="text_name" type="text" size="50" placeholder="Enter name here" />
-        Name
-        <br/>
-        <input id="text_email" type="text" size="50" placeholder="Enter email address here" />
-        Email address
-        <br/>
-        Connection type:&nbsp;
-        <input id="connection_type_3G" type="radio" name="connection_type" />3G&nbsp;
-        <input id="connection_type_4G" type="radio" name="connection_type" />4G&nbsp;
-        <input id="connection_type_WiFi" type="radio" name="connection_type" />WiFi&nbsp;
-        <input id="connection_type_wireless" type="radio" name="connection_type" />other wireless&nbsp;
-        <input id="connection_type_wired" type="radio" name="connection_type" />wired
-        <br/>
-        Test duration: &nbsp;
-        <input id="duration15" type="radio" name="duration" onclick="updateEstimateData()" checked />15&nbsp;
-        <input id="duration30" type="radio" name="duration" onclick="updateEstimateData()" />30&nbsp;
-        <input id="duration60" type="radio" name="duration" onclick="updateEstimateData()" />60 minutes &emsp;
-        <span id="estimate"></span>
-        <br/>
-        <button id="button_start" type="button" onclick="clickStart()" disabled>Start</button>
-        <span id="status">Initializing &hellip;</span>
-        <br/>
-        <div id="textbox"></div>
-        <br/>
+        <div id="main_wrapper">
+            <div id="name_wrapper">
+                <label class="label_padding">Name</label>
+                <input id="text_name" type="text" size="30" placeholder="Enter name here" />
+            </div>
+            <div id="email_wrapper">
+                <label class="label_padding">Email</label>
+                <input id="text_email" type="text" size="30" placeholder="Enter email address here" />
+            </div>
+            <div id="h_spacer"></div>
+            <div id="connection_wrapper">
+                <label >Connection type</label>
+                <div id="h_spacer"></div>
+                <input id="connection_type_3G" type="radio" name="connection_type" />3G&nbsp;
+                <input id="connection_type_4G" type="radio" name="connection_type" />4G&nbsp;
+                <input id="connection_type_WiFi" type="radio" name="connection_type" />WiFi&nbsp;
+                <input id="connection_type_wireless" type="radio" name="connection_type" />other wireless&nbsp;
+                <input id="connection_type_wired" type="radio" name="connection_type" />wired
+            </div>
+            <div id="h_spacer"></div>
+            <div id="duration_wrapper">
+                <label >Test duration:</label>
+                <div id="h_spacer"></div>
+                <input id="duration15" type="radio" name="duration" onclick="updateEstimateData()" checked />15&nbsp;
+                <input id="duration30" type="radio" name="duration" onclick="updateEstimateData()" />30&nbsp;
+                <input id="duration60" type="radio" name="duration" onclick="updateEstimateData()" />60 minutes &emsp;
+                <span id="estimate"></span>
+            </div>
+            <div id="h_spacer"></div>
+            <button id="button_start" type="button" onclick="clickStart()" disabled>Start</button>
+            <span id="status">Initializing &hellip;</span>
+            <div id="h_spacer"></div>
+            <div id="textbox"></div>
+        </div>
     </body>
 </html>
