@@ -11,6 +11,7 @@ Harness = function () {
     var currentSessionInfo = null;
 
     function init() {
+
         player = dashjs.MediaPlayer().create();
         player.initialize(document.getElementById('video'), null, true);
         player.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, onPlaybackStarted);
@@ -28,11 +29,6 @@ Harness = function () {
     }
 
     function next() {
-        stopSessionTimeout();
-        networkModulator.stop();
-
-        metricsCollection
-
         var config = getNextSessionConfig();
         if (config) {
 
@@ -77,7 +73,7 @@ Harness = function () {
         stopSessionTimeout();
         sessionTimeout = setTimeout(function () {
             sessionTimeout = null;
-            singleEnded("ended:timeout")
+            completeTest("ended:timeout")
         }, delay * 1000);
     }
 
@@ -89,7 +85,7 @@ Harness = function () {
     }
 
     function onManifestLoaded(e) {
-        networkModulator.start();
+        //networkModulator.start();
     }
 
     ////////////////////////////////////////////////
@@ -117,13 +113,27 @@ Harness = function () {
     }
 
     function onPlaybackEnded(e) {
-        singleEnded(e.type)
+        completeTest(e.type)
     }
 
-    function singleEnded(type) {
+    function completeTest(type) {
+        stopSessionTimeout();
+        networkModulator.stop();
+
         var metricSet = new MetricSet();
         metricSet.eventType = type;
         captureMetricSet(metricSet);
+
+        metricsCollectionService.initialize();
+        metricsCollectionService.addToDocument('mpd', currentSessionInfo.mpd);
+        metricsCollectionService.addToDocument('id', currentSessionInfo.id);
+        var sessionMetrics = metricsCollection.getSessionById(currentSessionInfo.id);
+        var metricsArr = sessionMetrics.metrics
+        for (var metricSet in metricsArr) {
+            var m = metricsArr[metricSet];
+            metricsCollectionService.addToDocument('metric'+ m.eventType+ m.eventTime, m);
+        }
+
         next();
     }
 
@@ -134,7 +144,7 @@ Harness = function () {
     }
 
     function onError(e) {
-        var metricSet = new Metrics();
+        var metricSet = new MetricSet();
         metricSet.eventType = e.type;
         //Need more error info here.
         captureMetricSet(metricSet);
