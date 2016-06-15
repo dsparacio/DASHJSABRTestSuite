@@ -1,8 +1,13 @@
 ProfilerDBDocument = function() {
+    //User defined info
+    this.username = null;
+    this.email = null;
+    this.network_type = null;
+
     //program defined
     this.guid = null;
     this.date =  null;
-    this.timezoneOffset = null;
+    this.timezone_offset = null;
     this.start_epoch =  null;
     this.end_epoch =  null;
     this.city = null;
@@ -27,10 +32,6 @@ ProfilerDBDocument = function() {
     this.viewport_height = null;
     this.viewport_width = null;
     this.viewport_orientation = null;
-    //User defined info
-    this.username = null;
-    this.email = null;
-    this.networkType = null;
 }
 
 ProfilerDBDocument.prototype = {

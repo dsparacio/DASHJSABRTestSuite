@@ -251,6 +251,8 @@
             else if (document.getElementById('connection_type_wired').checked) {
                 type = 'wired';
             }
+
+            return type;
         }
 
         function updateEstimateData() {
@@ -263,7 +265,7 @@
             service.addToDocument("username", document.getElementById('text_name').value);
             service.addToDocument("email", document.getElementById('text_email').value);
             service.addToDocument("end_epoch", Date.now());
-            service.addToDocument("networkType", getNetworkType());
+            service.addToDocument("network_type", getNetworkType());
             // service.addToDocument("testUrl", generateUrl(representationIndex, true));
             service.addToDocument("profile", profile);
             service.saveDocumentToDB();
