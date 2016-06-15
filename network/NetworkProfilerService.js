@@ -51,6 +51,9 @@ NetworkProfilerService = function() {
                 Object.assign(document, JSON.parse(xhr.response));
                 callback();
             }
+            else {
+                callback('Cannot process ip information.');
+            }
         }
         xhr.send();
     }

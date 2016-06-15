@@ -13,12 +13,12 @@
 
     <script>
         var samplePeriodS = 5;
-        var initialEstimateRepresentationIndex = 5;
+        var textboxMaxLines = 10;
 
         var urlPrefix = 'http://dash.edgesuite.net/akamai/bbb_30fps/';
         var urlSuffix = '_2.m4v';
         // url = urlPrefix + RepresentationID + '/' + RepresentationID + urlSuffix
-        var representationIndex = NaN; // initialized through init()
+        var representationIndex = NaN; // initialized later
         var representation = [
             { RepresentationID: 'bbb_30fps_320x180_200k',     size: 119747  },
             { RepresentationID: 'bbb_30fps_320x180_400k',     size: 234489  },
@@ -35,8 +35,17 @@
         var cacheBreakCounter = Date.now();
 
         var running = false;
+
+        var stillGettingIPInfo = true;
+        var initDownload = null;
+        var initDownloadRepresentationIndex = 5;
+        var initRepresentation = NaN;
+
         var download = null;
         var timeLeftS = NaN;
+        var tickerTimeout = null;
+        var tickerMin = NaN;
+        var tickerNext = NaN;
 
         var profileJson;
         var delimiterProfileJson;
@@ -56,27 +65,75 @@
             textbox = document.getElementById('textbox');
 
             service.initialize();
-            service.getLocationInfo(function() {
+            service.getLocationInfo(function(e) {
+                if (e) {
+                    document.getElementById('status').innerHTML = 'ERROR: ' + e;
+                    return;
+                }
 
-                startDownload(initialEstimateRepresentationIndex, 1000 * samplePeriodS, function (bytesDownloaded, latency, throughput) {
-                    if (bytesDownloaded === 0) {
-                        // TODO: report error
-                        return;
-                    }
+                stillGettingIPInfo = false;
+                var nt = getNetworkType();
+                if (nt === null) {
+                    document.getElementById('status').innerHTML = 'Please choose network type &hellip;';
+                    return;
+                }
+
+                chooseRepresentation(nt);
+            })
+
+        }
+
+        function chooseRepresentation(networkType) {
+            if (networkType === '3G' || networkType === '4G') {
+                if (initDownload) {
+                    // abort any ongoing bandwidth estimation
+                    cancelDownload(initDownload);
+                    initDownload = null;
+                }
+
+                representationIndex = 0;
+                document.getElementById('status').innerHTML = '';
+                document.getElementById('button_start').disabled = false;
+                updateEstimateData();
+                return;
+            }
+
+            if (!isNaN(initRepresentation)) {
+                // already have estimate for bandwidth
+                representationIndex = initRepresentation;
+                document.getElementById('status').innerHTML = '';
+                document.getElementById('button_start').disabled = false;
+                updateEstimateData();
+                return;
+            }
+
+            // if we arrive here, we need to estimate the bandwidth
+
+            document.getElementById('status').innerHTML = 'Estimating bandwidth &hellip;';
+            document.getElementById('button_start').disabled = true;
+
+            if (initDownload) {
+                // already estimating bandwidth
+                return;
+            }
+
+            initDownload = startDownload(initDownloadRepresentationIndex, 1000 * samplePeriodS, function (bytesDownloaded, latency, throughput) {
+                if (bytesDownloaded === 0) {
+                    // TODO: report error
+                    // Do not set initRepresentation - maybe it works later?
+                    representationIndex = 0;
+                } else {
                     var size = 0.9 * (1000 * samplePeriodS - latency) * throughput / 0.008;
-
                     representationIndex = 0;
                     while (representationIndex + 1 < representation.length && representation[representationIndex + 1].size <= size) {
                         ++representationIndex;
                     }
-
-                    updateEstimateData();
-
-                    document.getElementById('status').innerHTML = '';
-                    document.getElementById('button_start').disabled = false;
-                }, true);
-            })
-
+                    initRepresentation = representationIndex;
+                }
+                document.getElementById('status').innerHTML = '';
+                document.getElementById('button_start').disabled = false;
+                updateEstimateData();
+            }, true);
         }
 
         function generateUrl(representationIndex, disableCacheBreak) {
@@ -170,6 +227,9 @@
         function nextDownload() {
             download = startDownload(representationIndex, 1000 * samplePeriodS, function (bytesDownloaded, latency, throughput) {
                 lines.push('[' + indexProfileJson + '] latency: ' + latency + ' ms, throughput: ' + throughput.toFixed(3) + ' Mbps');
+                if (lines.length > textboxMaxLines) {
+                    lines.splice(0, lines.length - textboxMaxLines);
+                }
                 textbox.innerHTML = lines.join('<br/>');
 
                 profileJson += delimiterProfileJson + '{"index": "' + indexProfileJson + '", "duration_s": "' + samplePeriodS.toFixed(0) + '", "latency_ms": "' + latency.toFixed(0) + '", "throughput_Mbps": "' + throughput.toFixed(3) + '"}';
@@ -178,51 +238,84 @@
 
                 timeLeftS -= samplePeriodS;
 
+                if (tickerTimeout) {
+                    clearTimeout(tickerTimeout);
+                    tickerTimeout = null;
+                }
+
                 if (timeLeftS <= 0) {
-                    profileJson += '\n    ]\n}\n';
-
-                    document.getElementById('text_name').disabled = true;
-                    document.getElementById('text_email').disabled = true;
-                    document.getElementById('connection_type_3G').disabled = true;
-                    document.getElementById('connection_type_4G').disabled = true;
-                    document.getElementById('connection_type_WiFi').disabled = true;
-                    document.getElementById('connection_type_wireless').disabled = true;
-                    document.getElementById('connection_type_wired').disabled = true;
-                    document.getElementById('button_start').disabled = true;
-                    document.getElementById('status').innerHTML = 'Test complete. Thank you.';
-
-                    uploadProfile(profileJson);
-
-                    running = false;
+                    testReady();
                     return; // stop download cycle here
                 }
 
-                document.getElementById('status').innerHTML = 'Running test &hellip; &emsp; ' + formatTime(timeLeftS);
+                tickerMin = timeLeftS - samplePeriodS;
+                if (tickerMin < 0) {
+                    tickerMin = 0;
+                }
+                tickerNext = timeLeftS;
+                tickerUpdate();
+
                 nextDownload();
             });
         }
 
+        function tickerUpdate() {
+            document.getElementById('status').innerHTML = 'Running test &hellip; &emsp; ' + formatTime(tickerNext);
+            --tickerNext;
+            if (tickerNext < tickerMin) {
+                return;
+            }
+
+            tickerTimeout = setTimeout(function () {
+                tickerTimeout = null;
+                tickerUpdate();
+            }, 1000);
+        }
+
         function clickStart() {
-            running = true;
+            if (!running) {
+                // Start
+                running = true;
 
-            service.addToDocument("start_epoch", Date.now());
+                service.addToDocument("start_epoch", Date.now());
 
-            document.getElementById('button_start').disabled = true;
+                document.getElementById('button_start').innerHTML = 'Stop';
 
-            document.getElementById('duration15').disabled = true;
-            document.getElementById('duration30').disabled = true;
-            document.getElementById('duration60').disabled = true;
+                document.getElementById('connection_type_3G').disabled = true;
+                document.getElementById('connection_type_4G').disabled = true;
+                document.getElementById('connection_type_WiFi').disabled = true;
+                document.getElementById('connection_type_wired').disabled = true;
+                document.getElementById('connection_type_other').disabled = true;
+                document.getElementById('connection_vpn').disabled = true;
 
-            timeLeftS = getTotalTime();
+                document.getElementById('duration5').disabled = true;
+                document.getElementById('duration15').disabled = true;
+                document.getElementById('duration30').disabled = true;
+                document.getElementById('duration60').disabled = true;
 
-            document.getElementById('status').innerHTML = 'Running test &hellip; &emsp; ' + formatTime(timeLeftS);
+                timeLeftS = getTotalTime();
 
-            nextDownload();
+                tickerMin = timeLeftS - samplePeriodS;
+                if (tickerMin < 0) {
+                    tickerMin = 0;
+                }
+                tickerNext = timeLeftS;
+                tickerUpdate();
+
+                nextDownload();
+            } else {
+                // Stop
+                cancelDownload(download);
+                testReady();
+            }
         }
 
         function getTotalTime() {
             var t = NaN;
-            if (document.getElementById('duration15').checked) {
+            if (document.getElementById('duration5').checked) {
+                t = 300;
+            }
+            else if (document.getElementById('duration15').checked) {
                 t = 900;
             }
             else if (document.getElementById('duration30').checked) {
@@ -235,7 +328,6 @@
         }
 
         function getNetworkType() {
-
             var type = null;
             if (document.getElementById('connection_type_3G').checked) {
                 type = '3G';
@@ -246,20 +338,48 @@
             else if (document.getElementById('connection_type_WiFi').checked) {
                 type = 'WiFi';
             }
-            else if (document.getElementById('connection_type_wireless').checked) {
-                type = 'wireless';
-            }
             else if (document.getElementById('connection_type_wired').checked) {
                 type = 'wired';
             }
-
+            else if (document.getElementById('connection_type_other').checked) {
+                type = 'other';
+            }
             return type;
+        }
+
+        function updateNetworkType() {
+            if (stillGettingIPInfo) {
+                return;
+            }
+
+            var nt = getNetworkType();
+            if (nt === null) {
+                return;
+            }
+            chooseRepresentation(nt);
         }
 
         function updateEstimateData() {
             var s = representation[representationIndex].size * getTotalTime() / samplePeriodS;
-            s += representation[initialEstimateRepresentationIndex].size;
             document.getElementById('estimate').innerHTML = 'Data estimate: ' + Math.ceil(0.000001 * s) + ' MB';
+        }
+
+        function testReady() {
+            if (tickerTimeout) {
+                clearTimeout(tickerTimeout);
+                tickerTimeout = null;
+            }
+
+            profileJson += '\n    ]\n}\n';
+
+            document.getElementById('text_name').disabled = true;
+            document.getElementById('text_email').disabled = true;
+            document.getElementById('button_start').disabled = true;
+            document.getElementById('status').innerHTML = 'Test complete. Thank you.';
+
+            uploadProfile(profileJson);
+
+            running = false;
         }
 
         function uploadProfile(profile) {
@@ -267,7 +387,8 @@
             service.addToDocument("email", document.getElementById('text_email').value);
             service.addToDocument("end_epoch", Date.now());
             service.addToDocument("network_type", getNetworkType());
-            // service.addToDocument("testUrl", generateUrl(representationIndex, true));
+            // service.addToDocument("network_vpn", document.getElementById('connection_vpn'),checked);
+            // service.addToDocument("test_url", generateUrl(representationIndex, true));
             service.addToDocument("profile", profile);
             service.saveDocumentToDB();
         }
@@ -289,16 +410,18 @@
             <div id="connection_wrapper">
                 <label >Connection type *</label>
                 <div id="h_spacer"></div>
-                <input id="connection_type_3G" type="radio" name="connection_type" />3G&nbsp;
-                <input id="connection_type_4G" type="radio" name="connection_type" />4G&nbsp;
-                <input id="connection_type_WiFi" type="radio" name="connection_type" />WiFi&nbsp;
-                <input id="connection_type_wired" type="radio" name="connection_type" />Wired&nbsp;
-                <input id="connection_type_wireless" type="radio" name="connection_type" />Other
+                <input id="connection_type_3G"    type="radio" name="connection_type" onclick="updateNetworkType()" />3G&nbsp;
+                <input id="connection_type_4G"    type="radio" name="connection_type" onclick="updateNetworkType()" />4G&nbsp;
+                <input id="connection_type_WiFi"  type="radio" name="connection_type" onclick="updateNetworkType()" />WiFi&nbsp;
+                <input id="connection_type_wired" type="radio" name="connection_type" onclick="updateNetworkType()" />Wired&nbsp;
+                <input id="connection_type_other" type="radio" name="connection_type" onclick="updateNetworkType()" />Other &emsp;
+                <input id="connection_vpn" type="checkbox" />via VPN
             </div>
             <div id="h_spacer"></div>
             <div id="duration_wrapper">
                 <label >Test duration *</label>
                 <div id="h_spacer"></div>
+                <input id="duration5"  type="radio" name="duration" onclick="updateEstimateData()" />5&nbsp;
                 <input id="duration15" type="radio" name="duration" onclick="updateEstimateData()" checked />15&nbsp;
                 <input id="duration30" type="radio" name="duration" onclick="updateEstimateData()" />30&nbsp;
                 <input id="duration60" type="radio" name="duration" onclick="updateEstimateData()" />60 minutes &emsp;
@@ -306,7 +429,7 @@
             </div>
             <div id="h_spacer"></div>
             <button id="button_start" type="button" onclick="clickStart()" disabled>Start</button>
-            <span id="status">Initializing &hellip;</span>
+            <span id="status">Processing IP information &hellip;</span>
             <div id="h_spacer"></div>
             <div id="textbox"></div>
         </div>
