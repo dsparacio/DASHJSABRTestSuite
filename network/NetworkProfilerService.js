@@ -28,21 +28,7 @@ NetworkProfilerService = function() {
 
     }
 
-
-    function getOS() {
-        var ua = navigator.userAgent.toLowerCase();
-        return {
-            isWin7: /windows nt 6.1/.test(ua),
-            isWin8: /windows nt 6.2/.test(ua),
-            isWin81: /windows nt 6.3/.test(ua)
-        };
-    };
-
-
-
     function getLocationInfo(callback) {
-
-
         var xhr = new XMLHttpRequest();
         xhr.open('GET', 'http://ipinfo.io/json', true);
         xhr.overrideMimeType('application/json');
@@ -62,11 +48,9 @@ NetworkProfilerService = function() {
         if (document[key] !== undefined) {
             document[key] = value;
         }
-
     }
 
     function saveDocumentToDB() {
-
         $.couch.db("network_profiler").saveDoc(document, {
             success: function(data) {
                 console.log(data);
@@ -75,7 +59,6 @@ NetworkProfilerService = function() {
                 console.log(status);
             }
         });
-
     }
 
     function getGUID() {
