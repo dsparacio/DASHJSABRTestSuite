@@ -35,6 +35,7 @@
         var cacheBreakCounter = Date.now();
 
         var running = false;
+        var networkTypeSelected = false;
 
         var stillGettingIPInfo = true;
         var initDownload = null;
@@ -356,12 +357,15 @@
             if (nt === null) {
                 return;
             }
+            networkTypeSelected = true;
             chooseRepresentation(nt);
         }
 
         function updateEstimateData() {
-            var s = representation[representationIndex].size * getTotalTime() / samplePeriodS;
-            document.getElementById('estimate').innerHTML = 'Data estimate: ' + Math.ceil(0.000001 * s) + ' MB';
+            if (networkTypeSelected) {
+                var s = representation[representationIndex].size * getTotalTime() / samplePeriodS;
+                document.getElementById('estimate').innerHTML = 'Data estimate: ' + Math.ceil(0.000001 * s) + ' MB';
+            }
         }
 
         function testReady() {
@@ -400,11 +404,11 @@
         <div id="main_wrapper">
             <div id="name_wrapper">
                 <label class="label_padding">Name</label>
-                <input id="text_name" type="text" size="30" placeholder="Enter Name (optional)" />
+                <input id="text_name" type="text" placeholder="Enter Name (optional)" />
             </div>
             <div id="email_wrapper">
                 <label class="label_padding">Email</label>
-                <input id="text_email" type="text" size="30" placeholder="Enter Email (optional)" />
+                <input id="text_email" type="text" placeholder="Enter Email (optional)" />
             </div>
             <div id="h_spacer"></div>
             <div id="connection_wrapper">

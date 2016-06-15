@@ -41,8 +41,8 @@ div#h_spacer {
 
 div#textbox {
     padding: 5px;
-    background-color: #FFFFFF;
-    height: 500px;
+    background-color: rgb(170, 174, 174);
+    height: 175px;
     overflow: auto;
-    color: #000;
+    color: #FFF;
 }
