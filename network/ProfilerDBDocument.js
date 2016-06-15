@@ -1,7 +1,8 @@
 ProfilerDBDocument = function() {
     //program defined
-    this.uuid = null;
+    this.guid = null;
     this.date =  null;
+    this.timezoneOffset = null;
     this.start_epoch =  null;
     this.end_epoch =  null;
 
@@ -17,6 +18,22 @@ ProfilerDBDocument = function() {
     this.profile = null;
 
     //JS device and evn info
+    this.browser_name = null;
+    this.browser_fullVersion = null;
+    this.browser_majorVersion = null;
+    this.browser_minorVersion = null;
+
+
+    this.os_name = null;
+    this.os_vender = null;
+    this.os_fullVersion = null;
+    this.os_majorVersion = null;
+    this.os_minorVersion = null;
+
+    this.userAgent = null;
+    this.viewport_height = null;
+    this.viewport_width = null;
+    this.viewport_orientation = null;
 
 
     //User defined info

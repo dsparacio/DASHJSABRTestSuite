@@ -7,6 +7,7 @@
 
     <script src="../libs/jquery/jquery.js"></script>
     <script src="../libs/jquery/jquery.couch.js"></script>
+    <script src="../libs/jquery/pgwbrowser.min.js"></script>
     <script src="NetworkProfilerService.js"></script>
     <script src="ProfilerDBDocument.js"></script>
 
@@ -66,8 +67,8 @@
             jsonbox = document.getElementById('jsonbox');
             textbox = document.getElementById('textbox');
 
-
-            service.getDeviceInfo(function() {
+            service.initialize();
+            service.getLocationInfo(function() {
 
                 startDownload(6, segmentDuration, function (bytesDownloaded, latency, throughput) {
 
@@ -273,14 +274,6 @@
             service.addToDocument("end_epoch", Date.now());
             service.addToDocument("profile", profile);
             service.saveDocumentToDB();
-        }
-
-
-        function getGUID() {
-            function s4() {
-                return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-            }
-            return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
         }
 
     </script>
