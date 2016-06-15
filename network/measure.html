@@ -184,6 +184,7 @@
                     document.getElementById('connection_type_3G').disabled = true;
                     document.getElementById('connection_type_4G').disabled = true;
                     document.getElementById('connection_type_WiFi').disabled = true;
+                    document.getElementById('connection_type_wireless').disabled = true;
                     document.getElementById('connection_type_wired').disabled = true;
                     document.getElementById('button_start').disabled = true;
                     document.getElementById('status').innerHTML = 'Test complete. Thank you.';
@@ -194,7 +195,7 @@
                     return; // stop download cycle here
                 }
 
-                document.getElementById('status').innerHTML = 'Running test ... ' + formatTime(timeLeftS);
+                document.getElementById('status').innerHTML = 'Running test &hellip; &emsp; ' + formatTime(timeLeftS);
                 nextDownload();
             });
         }
@@ -212,7 +213,7 @@
 
             timeLeftS = getTotalTime();
 
-            document.getElementById('status').innerHTML = 'Running test ... ' + formatTime(timeLeftS);
+            document.getElementById('status').innerHTML = 'Running test &hellip; &emsp; ' + formatTime(timeLeftS);
 
             nextDownload();
         }
@@ -241,6 +242,9 @@
             }
             else if (document.getElementById('connection_type_WiFi').checked) {
                 type = 'WiFi';
+            }
+            else if (document.getElementById('connection_type_wireless').checked) {
+                type = 'wireless';
             }
             else if (document.getElementById('connection_type_wired').checked) {
                 type = 'wired';
@@ -279,20 +283,21 @@
         <input id="text_email" type="text" size="50" placeholder="Enter email address here" />
         Email address
         <br/>
-        Connection type:
-        <input id="connection_type_3G" type="radio" name="connection_type" />3G
-        <input id="connection_type_4G" type="radio" name="connection_type" />4G
-        <input id="connection_type_WiFi" type="radio" name="connection_type" />WiFi
+        Connection type:&nbsp;
+        <input id="connection_type_3G" type="radio" name="connection_type" />3G&nbsp;
+        <input id="connection_type_4G" type="radio" name="connection_type" />4G&nbsp;
+        <input id="connection_type_WiFi" type="radio" name="connection_type" />WiFi&nbsp;
+        <input id="connection_type_wireless" type="radio" name="connection_type" />other wireless&nbsp;
         <input id="connection_type_wired" type="radio" name="connection_type" />wired
         <br/>
-        Test duration:
-        <input id="duration15" type="radio" name="duration" onclick="updateEstimateData()" checked />15
-        <input id="duration30" type="radio" name="duration" onclick="updateEstimateData()" />30
+        Test duration: &nbsp;
+        <input id="duration15" type="radio" name="duration" onclick="updateEstimateData()" checked />15&nbsp;
+        <input id="duration30" type="radio" name="duration" onclick="updateEstimateData()" />30&nbsp;
         <input id="duration60" type="radio" name="duration" onclick="updateEstimateData()" />60 minutes &emsp;
         <span id="estimate"></span>
         <br/>
         <button id="button_start" type="button" onclick="clickStart()" disabled>Start</button>
-        <span id="status">Initializing ...</span>
+        <span id="status">Initializing &hellip;</span>
         <br/>
         <div id="textbox"></div>
         <br/>
