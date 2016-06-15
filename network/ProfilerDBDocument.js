@@ -5,8 +5,6 @@ ProfilerDBDocument = function() {
     this.timezoneOffset = null;
     this.start_epoch =  null;
     this.end_epoch =  null;
-
-    //edgescape - currently using http://ipinfo.io/json
     this.city = null;
     this.country = null;
     this.hostname = null;
@@ -16,26 +14,19 @@ ProfilerDBDocument = function() {
     this.postal = null;
     this.region = null;
     this.profile = null;
-
-    //JS device and evn info
     this.browser_name = null;
     this.browser_fullVersion = null;
     this.browser_majorVersion = null;
     this.browser_minorVersion = null;
-
-
     this.os_name = null;
     this.os_vender = null;
     this.os_fullVersion = null;
     this.os_majorVersion = null;
     this.os_minorVersion = null;
-
     this.userAgent = null;
     this.viewport_height = null;
     this.viewport_width = null;
     this.viewport_orientation = null;
-
-
     //User defined info
     this.username = null;
     this.email = null;
