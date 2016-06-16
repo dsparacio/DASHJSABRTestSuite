@@ -50,13 +50,15 @@ NetworkProfilerService = function() {
         }
     }
 
-    function saveDocumentToDB() {
+    function saveDocumentToDB(callback) {
         $.couch.db("network_profiler").saveDoc(document, {
             success: function(data) {
                 console.log(data);
+                callback(true);
             },
             error: function(status) {
                 console.log(status);
+                callback(false);
             }
         });
     }

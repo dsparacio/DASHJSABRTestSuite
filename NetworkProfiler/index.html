@@ -379,7 +379,7 @@
             document.getElementById('text_name').disabled = true;
             document.getElementById('text_email').disabled = true;
             document.getElementById('button_start').disabled = true;
-            document.getElementById('status').innerHTML = 'Test complete. Thank you.';
+            document.getElementById('status').innerHTML = 'Uploading network trace &hellip;';
 
             uploadProfile(profileJson);
 
@@ -387,6 +387,16 @@
         }
 
         function uploadProfile(profile) {
+            var callback = function (success) {
+                if (success) {
+                    document.getElementById('status').innerHTML = 'Test complete. Thank you.';
+                }
+                else {
+                    document.getElementById('status').innerHTML = 'ERROR: Cannot write to database.';
+                    // TODO: implement retry?
+                }
+            };
+
             service.addToDocument("username", document.getElementById('text_name').value);
             service.addToDocument("email", document.getElementById('text_email').value);
             service.addToDocument("end_epoch", Date.now());
@@ -396,7 +406,7 @@
             service.addToDocument("chunk_size", representation[representationIndex].size);
             service.addToDocument("chunks_downloaded", indexProfileJson);
             service.addToDocument("profile", profile);
-            service.saveDocumentToDB();
+            service.saveDocumentToDB(callback);
         }
 
 
