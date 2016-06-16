@@ -1,12 +1,33 @@
 {
     "configs": [
-        {"url": "http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd", "test_duration": "10", "abr":"bola", "fastSwitch":true, "profile":"profiles/profileA.json"},
-        {"url": "http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd", "test_duration": "100", "abr":"default" , "fastSwitch":true, "profile":"profiles/profileA.json"},
-        {"url": "http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd", "test_duration": "100", "abr":"bola", "fastSwitch":false, "profile":"profiles/profileA.json"},
-        {"url": "http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd", "test_duration": "100", "abr":"default" , "fastSwitch":false, "profile":"profiles/profileA.json"},
-        {"url": "http://rdmedia.bbc.co.uk/dash/ondemand/testcard/1/client_manifest-events.mpd", "test_duration": "100", "abr":"bola" , "fastSwitch":true, "profile":"profiles/profileA.json"},
-        {"url": "http://rdmedia.bbc.co.uk/dash/ondemand/testcard/1/client_manifest-events.mpd", "test_duration": "100", "abr":"default" , "fastSwitch":true, "profile":"profiles/profileA.json"},
-        {"url": "http://rdmedia.bbc.co.uk/dash/ondemand/testcard/1/client_manifest-events.mpd", "test_duration": "100", "abr":"bola" , "fastSwitch":false, "profile":"profiles/profileA.json"},
-        {"url": "http://rdmedia.bbc.co.uk/dash/ondemand/testcard/1/client_manifest-events.mpd", "test_duration": "100", "abr":"default" , "fastSwitch":false, "profile":"profiles/profileA.json"}
+
+        {
+            "url":"http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd",
+            "test_duration": "10",
+            "fastSwitch":false,
+            "profile":"profiles/profileA.json",
+            "abr":["bola", "default"]
+        },
+        {
+            "url":"http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd",
+            "test_duration": "10",
+            "fastSwitch":true,
+            "profile":"profiles/profileA.json",
+            "abr":["bola", "default"]
+        },
+        {
+            "url":"http://rdmedia.bbc.co.uk/dash/ondemand/testcard/1/client_manifest-events.mpd",
+            "test_duration": "100",
+            "fastSwitch":false,
+            "profile":"profiles/profileA.json",
+            "abr":["bola", "default"]
+        },
+        {
+            "url":"http://rdmedia.bbc.co.uk/dash/ondemand/testcard/1/client_manifest-events.mpd",
+            "test_duration": "100",
+            "fastSwitch":true,
+            "profile":"profiles/profileA.json",
+            "abr":["bola", "default"]
+        }
     ]
 }

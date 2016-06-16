@@ -9,6 +9,9 @@ Harness = function () {
     var metricsCollectionService = null;
     var networkModulator = null;
     var currentSessionInfo = null;
+    var groupGUID = null;
+    var config = null;
+    var currentABRSuiteIndex = 0;
 
     function init() {
 
@@ -20,7 +23,9 @@ Harness = function () {
         player.on(dashjs.MediaPlayer.events.ERROR, onError);
         player.on(dashjs.MediaPlayer.events.BUFFER_LEVEL_STATE_CHANGED, onBufferStateChange);
         player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_START, onQualityChanged);
-        player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, onManifestLoaded)
+        player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, onManifestLoaded);
+        player.on('fragmentLoadingCompleted', onFragmentLoaded);
+
 
         networkModulator = new NetworkModulator();
         metricsCollection = new MetricsCollection();
@@ -28,34 +33,48 @@ Harness = function () {
         loadSessionConfig();
     }
 
-    function next() {
-        var config = getNextSessionConfig();
-        if (config) {
 
-            function initializePlayback() {
-                player.attachSource(config.url);
-                var metricSet = new MetricSet();
-                metricSet.eventType = "playbackInitiated";
-                captureMetricSet(metricSet);
+    function nextGroup() {
+        if (config && currentABRSuiteIndex < config.abr.length -1) {
+            ++currentABRSuiteIndex;
+            next(config.abr[currentABRSuiteIndex]);
+        } else {
+            config = getNextSessionConfig();
+            if (config) {
+                currentABRSuiteIndex = 0;
+                groupGUID = getGUID();
+                next(config.abr[currentABRSuiteIndex]);
             }
-
-            currentSessionInfo = new SessionInfo();
-            currentSessionInfo.time = performance.now();
-            currentSessionInfo.wallclockTime = Date.now();
-            currentSessionInfo.mpd = config.url;
-            currentSessionInfo.id = getGUID();
-            currentSessionInfo.abr = config.abr;
-            currentSessionInfo.fastSwitch = config.fastSwitch;
-            currentSessionInfo.profile = config.profile;
-
-            player.enableBufferOccupancyABR(config.abr === 'bola');
-            player.setFastSwitchEnabled(config.fastSwitch);
-
-            metricsCollection.createSession(currentSessionInfo);
-            networkModulator.loadProfile(config.profile, initializePlayback);
-
-            startSessionTimeout(config.test_duration);
         }
+    }
+
+
+    function next(abr) {
+
+        function initializePlayback() {
+            player.attachSource(config.url);
+            var metricSet = new MetricSet();
+            metricSet.eventType = "playbackInitiated";
+            captureMetricSet(metricSet);
+        }
+
+        currentSessionInfo = new SessionInfo();
+        currentSessionInfo.time = performance.now();
+        currentSessionInfo.wallclockTime = Date.now();
+        currentSessionInfo.mpd = config.url;
+        currentSessionInfo.id = getGUID();
+        currentSessionInfo.group_id = groupGUID;
+        currentSessionInfo.abr = abr;
+        currentSessionInfo.fastSwitch = config.fastSwitch;
+        currentSessionInfo.profile = config.profile;
+
+        player.enableBufferOccupancyABR(abr === 'bola');
+        player.setFastSwitchEnabled(config.fastSwitch);
+
+        metricsCollection.createSession(currentSessionInfo);
+        networkModulator.loadProfile(config.profile, initializePlayback);
+
+        startSessionTimeout(config.test_duration);
     }
 
     function getNextSessionConfig() {
@@ -85,7 +104,7 @@ Harness = function () {
     }
 
     function onManifestLoaded(e) {
-        //networkModulator.start();
+        networkModulator.start();
     }
 
     ////////////////////////////////////////////////
@@ -129,10 +148,9 @@ Harness = function () {
             metricsCollectionService.addToDocument(info, currentSessionInfo[info]);
         }
         var session = metricsCollection.getSessionById(currentSessionInfo.id);
-        metricsCollectionService.addToDocument('session', session.sessionInfo);
         metricsCollectionService.addToDocument('metrics', session.metrics);
         metricsCollectionService.saveDocumentToDB();
-        next();
+        nextGroup();
     }
 
     function onPlaybackStarted(e) {
@@ -141,13 +159,23 @@ Harness = function () {
         captureMetricSet(metricSet);
     }
 
+    function onFragmentLoaded(e) {
+        if (e.request.mediaType === 'video') {
+            var metricSet = new MetricSet();
+            metricSet.eventType = e.type;
+            metricSet.fragmentRequest = e.request;
+            metricSet.fragmentRequestError = e.error;
+            captureMetricSet(metricSet);
+        }
+    }
+
     function onError(e) {
         var metricSet = new MetricSet();
         metricSet.eventType = e.type;
         //Need more error info here.
         captureMetricSet(metricSet);
         player.reset();
-        next();
+        nextGroup();
     }
 
     function captureMetricSet(metricSet) {
@@ -174,7 +202,7 @@ Harness = function () {
             // TODO: check for errors
             if (xhr.status >= 200 && xhr.status <= 299) {
                 configs = JSON.parse(xhr.responseText).configs;
-                next();
+                nextGroup();
             }
         };
         xhr.send();

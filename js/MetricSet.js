@@ -10,6 +10,8 @@ MetricSet = function() {
     this.nextQualityLoading = NaN;  //(if this value is not NaN then it means quality change event occurred )
     this.bandwidth = NaN;
     this.isUpShiftInQuality = null;
+    this.fragmentRequest = null;
+    this.fragmentRequestError = null;
 }
 
 MetricSet.prototype = {
