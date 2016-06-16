@@ -3,8 +3,12 @@ ProfilerDBDocument = function() {
     this.username = null;
     this.email = null;
     this.network_type = null;
+    this.network_vpn = null;
 
     //program defined
+    this.url = null;
+    this.chunk_size = null;
+    this.chunks_downloaded = null;
     this.guid = null;
     this.date =  null;
     this.timezone_offset = null;
