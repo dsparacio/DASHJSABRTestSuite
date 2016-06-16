@@ -125,15 +125,13 @@ Harness = function () {
         captureMetricSet(metricSet);
 
         metricsCollectionService.initialize();
-        metricsCollectionService.addToDocument('mpd', currentSessionInfo.mpd);
-        metricsCollectionService.addToDocument('id', currentSessionInfo.id);
-        var sessionMetrics = metricsCollection.getSessionById(currentSessionInfo.id);
-        var metricsArr = sessionMetrics.metrics
-        for (var metricSet in metricsArr) {
-            var m = metricsArr[metricSet];
-            metricsCollectionService.addToDocument('metric'+ m.eventType+ m.eventTime, m);
+        for (var info in currentSessionInfo) {
+            metricsCollectionService.addToDocument(info, currentSessionInfo[info]);
         }
-
+        var session = metricsCollection.getSessionById(currentSessionInfo.id);
+        metricsCollectionService.addToDocument('session', session.sessionInfo);
+        metricsCollectionService.addToDocument('metrics', session.metrics);
+        metricsCollectionService.saveDocumentToDB();
         next();
     }
 
@@ -156,11 +154,11 @@ Harness = function () {
         metricSet.eventTime = performance.now();
         metricSet.wallclockTime = Date.now();
         metricSet.sessionInfo = currentSessionInfo;
-        if (player.isReady()) {
+        try{
             metricSet.bufferLevel = player.getBufferLength();
             metricSet.playheadTime = player.time();
             metricSet.lastQualityLoaded = isNaN(metricSet.lastQualityLoaded) ? player.getQualityFor('video') || player.getQualityFor('audio') : metricSet.lastQualityLoaded;
-        }
+        }catch(e){};
         metricsCollection.push(currentSessionInfo.id, metricSet);
     }
 
