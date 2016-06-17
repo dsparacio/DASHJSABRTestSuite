@@ -28,7 +28,7 @@ Harness = function () {
         player.on('fragmentLoadingCompleted', onFragmentLoaded);
 
 
-        networkModulator = new NetworkModulator();
+        networkModulator = new NetworkModulator(onProfileStep);
         metricsCollection = new MetricsCollection();
         metricsCollectionService = new MetricsCollectionService();
         networkProfileService = new NetworkProfileService();
@@ -40,12 +40,13 @@ Harness = function () {
     function nextSession() {
 
         config = getNextSessionConfig();
-        console.log("XXX a", config.fastSwitch, config.url)
+        //console.log("XXX a", config.fastSwitch, config.url)
         if (config) {
             currentABRSuiteIndex = 0;
             networkProfileService.initialize(config.profileList, nextGroup);
         } else {
-            console.log("end of all test instead of looping return null in getNextSessionConfig");
+            console.log("end of all test instead of looping return null in getNextSessionConfig- " +
+                "and do something meaningful at end of test like stop test.");
         }
 
     }
@@ -63,18 +64,19 @@ Harness = function () {
             }
         }
 
-        next(config.abr[currentABRSuiteIndex]);
+        nextABR(config.abr[currentABRSuiteIndex]);
         ++currentABRSuiteIndex;
         if (currentABRSuiteIndex === config.abr.length) {
+            //End of ABR List, reset currentABRSuiteIndex to allow for us to move to next comparison group.
             currentABRSuiteIndex = 0;
         }
 
     }
 
 
-    function next(abr) {
+    function nextABR(abr) {
 
-        console.log("XXX", abr, groupGUID, config.fastSwitch, config.url)
+       // console.log("XXX", abr, groupGUID, config.fastSwitch, config.url);
 
         currentSessionInfo = new SessionInfo();
         currentSessionInfo.time = performance.now();
@@ -196,6 +198,13 @@ Harness = function () {
         captureMetricSet(metricSet);
         player.reset();
         nextGroup();
+    }
+
+    function onProfileStep(e) {
+        var metricSet = new MetricSet();
+        metricSet.eventType = e.type;
+        metricSet.profileStepInfo = e.profile;
+        captureMetricSet(metricSet);
     }
 
     function captureMetricSet(metricSet) {

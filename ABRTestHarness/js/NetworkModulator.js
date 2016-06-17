@@ -1,4 +1,4 @@
-NetworkModulator = function() {
+NetworkModulator = function(callback) {
 
     // NetworkModulator uses browsermob.
     // NetworkModulator assumes that the following commands (or equivalent) were executed:
@@ -6,6 +6,7 @@ NetworkModulator = function() {
     //     $ curl -X POST -d 'port=8008' http://localhost:8080/proxy'
 
     var PROXY_CONTROL_URL = 'http://localhost:8080/proxy/8008/limit';
+    var profileStepCallback = callback;
     var profile = null;
     var currentProfileIndex = NaN;
     var profileStepTimeout = null;
@@ -31,9 +32,10 @@ NetworkModulator = function() {
     function stepProfile() {
         var p = profile[currentProfileIndex];
         setProxyThroughput(p.throughput_Mbps, p.latency_ms);
+        profileStepCallback({type:"proxyChange", profile:p});
         profileStepTimeout = setTimeout(stepProfile,  p.duration_s * 1000);
         currentProfileIndex++;
-        if (currentProfileIndex === profile.length) {
+        if (currentProfileIndex === profile.length) { //TODO fix this should not repeat
             // should not overrun profile, but if we do restart from beginning rather than fail
             currentProfileIndex = 0;
         }

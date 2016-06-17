@@ -11,6 +11,7 @@ MetricSet = function() {
     this.isUpShiftInQuality = null;
     this.fragmentRequest = null;
     this.fragmentRequestError = null;
+    this.profileStepInfo = null;
 }
 
 MetricSet.prototype = {
