@@ -126,7 +126,7 @@ Harness = function () {
             metricSet.lastQualityLoaded = e.oldQuality;
             metricSet.nextQualityLoading = e.newQuality;
             metricSet.isUpShiftInQuality = e.oldQuality < e.newQuality;
-            metricSet.bandwidth = "we need bandwidth from event please";
+            metricSet.switchReason = e.reason;
             captureMetricSet(metricSet);
         }
     }

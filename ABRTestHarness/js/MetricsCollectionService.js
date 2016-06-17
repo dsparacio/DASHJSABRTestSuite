@@ -1,10 +1,14 @@
 MetricsCollectionService = function() {
 
     $.couch.urlPrefix =  'http://dev-mediac-osqa01.kendall.corp.akamai.com:5984';
-    var DB_NAME = "dashabr_test_results";
+
+    var DB_DEV = "dashabr_test_results_dev";
+    var DB_PROD = "dashabr_test_results";
+    var DB_NAME = DB_DEV;
+
     var document = null;
 
-    function initialize() {
+    function initialize() {1
         document = new MetricSessionDocument();
     }
 

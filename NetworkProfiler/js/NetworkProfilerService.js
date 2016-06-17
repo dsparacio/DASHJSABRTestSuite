@@ -1,9 +1,12 @@
 NetworkProfilerService = function() {
 
+    $.couch.urlPrefix =  'http://dev-mediac-osqa01.kendall.corp.akamai.com:5984';
+    var DB_DEV = 'network_profiler_dev';
+    var DB_PROD = 'network_profiler';
+    var DB_NAME = DB_DEV;
     var document = null;
 
     function initialize() {
-        $.couch.urlPrefix =  'http://dev-mediac-osqa01.kendall.corp.akamai.com:5984';
 
         var date = new Date();
         var info = $.pgwBrowser();
@@ -25,7 +28,6 @@ NetworkProfilerService = function() {
         document.viewport_height = info.viewport.height;
         document.viewport_width = info.viewport.width;
         document.viewport_orientation = info.viewport.orientation;
-
     }
 
     function getLocationInfo(callback) {
@@ -51,7 +53,7 @@ NetworkProfilerService = function() {
     }
 
     function saveDocumentToDB(callback) {
-        $.couch.db("network_profiler").saveDoc(document, {
+        $.couch.db(DB_NAME).saveDoc(document, {
             success: function(data) {
                 console.log(data);
                 callback(true);
