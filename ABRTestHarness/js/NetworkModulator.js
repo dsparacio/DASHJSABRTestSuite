@@ -10,19 +10,8 @@ NetworkModulator = function() {
     var currentProfileIndex = NaN;
     var profileStepTimeout = null;
 
-    function loadProfile(url, callback) {
-
-        var xhr = new XMLHttpRequest();
-        xhr.overrideMimeType("application/json");
-        xhr.open('GET', url);
-        xhr.onloadend = function() {
-            // TODO: check for errors
-            if (xhr.status >= 200 && xhr.status <= 299) {
-                profile = JSON.parse(xhr.responseText).profile;
-                callback();
-            }
-        };
-        xhr.send();
+    function setProfile(p) {
+        profile = p.profile;
     }
 
     function start() {
@@ -36,7 +25,6 @@ NetworkModulator = function() {
             profileStepTimeout = null;
         }
         setProxyThroughput(NaN, 0);
-        profile = null;
     }
 
 
@@ -75,7 +63,7 @@ NetworkModulator = function() {
     }
 
     return {
-        loadProfile: loadProfile,
+        setProfile: setProfile,
         start: start,
         stop: stop
     }

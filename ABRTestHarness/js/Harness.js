@@ -7,6 +7,7 @@ Harness = function () {
     var sessionTimeout = NaN;
     var metricsCollection = null;
     var metricsCollectionService = null;
+    var networkProfileService = null;
     var networkModulator = null;
     var currentSessionInfo = null;
     var groupGUID = null;
@@ -30,33 +31,50 @@ Harness = function () {
         networkModulator = new NetworkModulator();
         metricsCollection = new MetricsCollection();
         metricsCollectionService = new MetricsCollectionService();
+        networkProfileService = new NetworkProfileService();
+
         loadSessionConfig();
     }
 
 
-    function nextGroup() {
-        if (config && currentABRSuiteIndex < config.abr.length -1) {
-            ++currentABRSuiteIndex;
-            next(config.abr[currentABRSuiteIndex]);
+    function nextSession() {
+
+        config = getNextSessionConfig();
+        console.log("XXX a", config.fastSwitch, config.url)
+        if (config) {
+            currentABRSuiteIndex = 0;
+            networkProfileService.initialize(config.profileList, nextGroup);
         } else {
-            config = getNextSessionConfig();
-            if (config) {
-                currentABRSuiteIndex = 0;
+            console.log("end of all test instead of looping return null in getNextSessionConfig");
+        }
+
+    }
+
+    function nextGroup() {
+
+        if (currentABRSuiteIndex === 0) {
+            var nextProfile = networkProfileService.getNextProfile();
+            if (nextProfile) {
                 groupGUID = getGUID();
-                next(config.abr[currentABRSuiteIndex]);
+                networkModulator.setProfile(nextProfile);
+            }else {
+                nextSession();
+                return;
             }
         }
+
+        next(config.abr[currentABRSuiteIndex]);
+        ++currentABRSuiteIndex;
+        if (currentABRSuiteIndex === config.abr.length) {
+            currentABRSuiteIndex = 0;
+        }
+
     }
 
 
     function next(abr) {
 
-        function initializePlayback() {
-            player.attachSource(config.url);
-            var metricSet = new MetricSet();
-            metricSet.eventType = "playbackInitiated";
-            captureMetricSet(metricSet);
-        }
+        console.log("XXX", abr, groupGUID, config.fastSwitch, config.url)
 
         currentSessionInfo = new SessionInfo();
         currentSessionInfo.time = performance.now();
@@ -67,14 +85,15 @@ Harness = function () {
         currentSessionInfo.abr = abr;
         currentSessionInfo.fastSwitch = config.fastSwitch;
         currentSessionInfo.profile = config.profile;
+        metricsCollection.createSession(currentSessionInfo);
 
         player.enableBufferOccupancyABR(abr === 'bola');
         player.setFastSwitchEnabled(config.fastSwitch);
+        player.attachSource(config.url);
 
-        metricsCollection.createSession(currentSessionInfo);
-        networkModulator.loadProfile(config.profile, initializePlayback);
-
-        startSessionTimeout(config.test_duration);
+        var metricSet = new MetricSet();
+        metricSet.eventType = "playbackInitiated";
+        captureMetricSet(metricSet);
     }
 
     function getNextSessionConfig() {
@@ -105,6 +124,7 @@ Harness = function () {
 
     function onManifestLoaded(e) {
         networkModulator.start();
+        startSessionTimeout(config.test_duration);
     }
 
     ////////////////////////////////////////////////
@@ -202,7 +222,7 @@ Harness = function () {
             // TODO: check for errors
             if (xhr.status >= 200 && xhr.status <= 299) {
                 configs = JSON.parse(xhr.responseText).configs;
-                nextGroup();
+                nextSession();
             }
         };
         xhr.send();

@@ -1,7 +1,0 @@
-{
-    "profile": [
-        {"index": "0", "duration_s": "20", "latency_ms": "128", "throughput_Mbps": "25.842"},
-        {"index": "1", "duration_s": "20", "latency_ms": "63", "throughput_Mbps": "19.397"},
-        {"index": "2", "duration_s": "20", "latency_ms": "77", "throughput_Mbps": "15.773"}
-    ]
-}
