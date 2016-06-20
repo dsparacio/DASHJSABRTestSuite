@@ -5,6 +5,7 @@ NetworkProfilerService = function() {
     var DB_PROD = 'network_profiler';
     var DB_NAME = DB_DEV;
     var document = null;
+    var dbWriteTimout = 5000;
 
     function initialize() {
 
@@ -53,16 +54,41 @@ NetworkProfilerService = function() {
     }
 
     function saveDocumentToDB(callback) {
+        var timeout = null;
+
         $.couch.db(DB_NAME).saveDoc(document, {
             success: function(data) {
                 console.log(data);
-                callback(true);
+                if (timeout) {
+                    clearTimeout(timeout);
+                    timeout = null;
+                }
+                if (callback) {
+                    callback(true);
+                    callback = null;
+                }
             },
             error: function(status) {
                 console.log(status);
-                callback(false);
+                if (timeout) {
+                    clearTimeout(timeout);
+                    timeout = null;
+                }
+                if (callback) {
+                    callback(false, document);
+                    callback = null;
+                }
             }
         });
+
+        timeout = setTimeout(function () {
+            console.log('db write timeout');
+            timeout = null;
+            if (callback) {
+                callback(false, document);
+                callback = null;
+            }
+        }, dbWriteTimout);
     }
 
     function getGUID() {

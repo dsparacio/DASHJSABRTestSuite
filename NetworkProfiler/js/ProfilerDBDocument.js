@@ -2,6 +2,7 @@ ProfilerDBDocument = function() {
     //User defined info
     this.username = null;
     this.email = null;
+    this.comments = null;
     this.network_type = null;
     this.network_vpn = null;
 

@@ -377,18 +377,19 @@ Main = function () {
     }
 
     function uploadProfile(profile) {
-        var callback = function (success) {
+        var callback = function (success, doc) {
             if (success) {
                 document.getElementById('status').innerHTML = 'Test complete. Thank you.';
             }
             else {
-                document.getElementById('status').innerHTML = 'ERROR: Cannot write to database.';
-                // TODO: implement retry?
+                var emailUrl = 'mailto:kspiteri@akamai.com?Subject=Network%20Measurement&body=' + encodeURIComponent(JSON.stringify(doc));
+                document.getElementById('status').innerHTML = 'Cannot write to database. <a href="' + emailUrl + '">Click to email measurements.</a>';
             }
         };
 
         service.addToDocument("username", document.getElementById('text_name').value);
         service.addToDocument("email", document.getElementById('text_email').value);
+        service.addToDocument("comments", document.getElementById('text_comments').value);
         service.addToDocument("end_epoch", Date.now());
         service.addToDocument("network_type", getNetworkType());
         service.addToDocument("network_vpn", document.getElementById('connection_vpn').checked);
