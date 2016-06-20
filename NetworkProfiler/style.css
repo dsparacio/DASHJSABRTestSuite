@@ -1,23 +1,15 @@
 html, body {
-    margin: 10px 10px;
+    margin: 10px 10px;;
 }
 
-
-
-div#duration_wrapper {
-}
-
-div#connection_wrapper{
-}
-
-div#name_wrapper {
-    clear: right;
-    float: left;
-    margin-right: 10px;
-}
+/*div#name_wrapper {*/
+    /*clear: right;*/
+    /*float: left;*/
+    /*margin-right: 10px;*/
+/*}*/
 
 div#main_wrapper{
-    width: 505px;
+    width: 450px;
     padding: 20px 20px;
     background-color: #00589d;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;

@@ -14,33 +14,36 @@
 
     <body onload="new Main().init()">
         <div id="main_wrapper">
-            <div id="name_wrapper">
-                <label class="label_padding">Name</label>
-                <input id="text_name" type="text" placeholder="Enter Name (optional)" />
-            </div>
-            <div id="email_wrapper">
-                <label class="label_padding">Email</label>
-                <input id="text_email" type="text" placeholder="Enter Email (optional)" />
-            </div>
+            <label class="label_padding">Name</label>
+            <div id="h_spacer"></div>
+            <input id="text_name" type="text" placeholder="Enter Name (optional)" />
+            <div id="h_spacer"></div>
+            <label class="label_padding">Email</label>
+            <div id="h_spacer"></div>
+            <input id="text_email" type="text" placeholder="Enter Email (optional)" />
+            <div id="h_spacer"></div>
+            <label class="comments_padding">Comments</label>
+            <div id="h_spacer"></div>
+            <textarea id="text_comments" rows="4" cols="55" placeholder="Enter Comments (optional)"></textarea>
             <div id="h_spacer"></div>
             <div id="connection_wrapper">
                 <label >Connection type *</label>
                 <div id="h_spacer"></div>
-                <input id="connection_type_3G"    type="radio" name="connection_type"/>3G&nbsp;
-                <input id="connection_type_4G"    type="radio" name="connection_type"/>4G&nbsp;
-                <input id="connection_type_WiFi"  type="radio" name="connection_type"/>WiFi&nbsp;
-                <input id="connection_type_wired" type="radio" name="connection_type"/>Wired&nbsp;
-                <input id="connection_type_other" type="radio" name="connection_type"/>Other &emsp;
-                <input id="connection_vpn" type="checkbox" />via VPN
+                <input id="connection_type_3G"    type="radio" name="connection_type">3G</input>
+                <input id="connection_type_4G"    type="radio" name="connection_type">4G</input>
+                <input id="connection_type_WiFi"  type="radio" name="connection_type">WiFi</input>
+                <input id="connection_type_wired" type="radio" name="connection_type">Wired</input>
+                <input id="connection_type_other" type="radio" name="connection_type">Other</input>
+                <input id="connection_vpn" type="checkbox" />via VPN</input>
             </div>
             <div id="h_spacer"></div>
             <div id="duration_wrapper">
                 <label >Test duration *</label>
                 <div id="h_spacer"></div>
-                <input id="duration5"  type="radio" name="duration"/>5&nbsp;
-                <input id="duration15" type="radio" name="duration" checked />15&nbsp;
-                <input id="duration30" type="radio" name="duration" />30&nbsp;
-                <input id="duration60" type="radio" name="duration" />60 minutes &emsp;
+                <input id="duration5"  type="radio" name="duration">5</input>
+                <input id="duration15" type="radio" name="duration" checked >15</input>
+                <input id="duration30" type="radio" name="duration" >30</input>
+                <input id="duration60" type="radio" name="duration" >60 minutes</input>
                 <span id="estimate"></span>
             </div>
             <div id="h_spacer"></div>
