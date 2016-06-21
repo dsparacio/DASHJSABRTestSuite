@@ -368,6 +368,7 @@ Main = function () {
 
         document.getElementById('text_name').disabled = true;
         document.getElementById('text_email').disabled = true;
+        document.getElementById('text_comments').disabled = true;
         document.getElementById('button_start').disabled = true;
         document.getElementById('status').innerHTML = 'Uploading network trace &hellip;';
 
@@ -382,8 +383,9 @@ Main = function () {
                 document.getElementById('status').innerHTML = 'Test complete. Thank you.';
             }
             else {
-                var emailUrl = 'mailto:kspiteri@akamai.com?Subject=Network%20Measurement&body=' + encodeURIComponent(JSON.stringify(doc));
-                document.getElementById('status').innerHTML = 'Cannot write to database. <a href="' + emailUrl + '">Click to email measurements.</a>';
+                var emailUrl = 'mailto:kspiteri@akamai.com?Subject=%5BNetworkProfile%5D%20Network%20Measurement&body=' + encodeURIComponent(JSON.stringify(doc));
+                document.getElementById('status').innerHTML = 'Cannot write to database. <a id="email_link" href="' + emailUrl + '">Please send measurement by email.</a>';
+                document.getElementById('email_link').click();
             }
         };
 
