@@ -40,13 +40,16 @@ Main = function () {
     var textbox;
 
 
+    function handlePageUnload(e) {
+        return 'Do you want to leave this site?'
+    }
+
+
     function init() {
 
         $("input[name='connection_type']").change(updateNetworkType);
         $("input[name='duration']").change(updateEstimateData);
         $("#button_start").click(clickStart);
-
-
 
         profileJson = '{\n    "profile": [';
         delimiterProfileJson = '\n        ';
@@ -270,6 +273,7 @@ Main = function () {
 
             service.addToDocument("start_epoch", Date.now());
 
+            window.onbeforeunload = handlePageUnload;
             document.getElementById('button_start').innerHTML = 'Finish Now';
 
             document.getElementById('connection_type_3G').disabled = true;
@@ -384,9 +388,12 @@ Main = function () {
             }
             else {
                 var emailUrl = 'mailto:kspiteri@akamai.com?Subject=%5BNetworkProfile%5D%20Network%20Measurement&body=' + encodeURIComponent(JSON.stringify(doc));
-                document.getElementById('status').innerHTML = 'Cannot write to database. <a id="email_link" href="' + emailUrl + '">Please send measurement by email.</a>';
+                document.getElementById('status').innerHTML = 'Oops we cannot write to database since you are not on the ' +
+                    'Akamai VPN. No problem, we have auto-populated an email for you to send us! If for some reason you do not see the email click the link to regenerate it. <a id="email_link" href="' + emailUrl + '">Regenerate the email</a>';
                 document.getElementById('email_link').click();
             }
+
+            window.onbeforeunload = null;
         };
 
         service.addToDocument("username", document.getElementById('text_name').value);

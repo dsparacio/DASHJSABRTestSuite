@@ -20,8 +20,14 @@ div#main_wrapper{
 
 input[type="radio"] {
     display: inline-block;
-    margin-right: 7px;
+    margin-right: 5px;
 }
+
+label {
+    margin-left: -4px;
+    margin-right: 10px;
+}
+
 
 .label_padding {
     margin-right: 10px;
@@ -38,3 +44,8 @@ div#textbox {
     overflow: auto;
     color: #FFF;
 }
+
+
+a:link {color:#ffcc00;}
+a:visited {color: #b08900;}
+a:hover {color: #ffcc00;}
