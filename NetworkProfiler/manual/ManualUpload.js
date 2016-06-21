@@ -12,11 +12,24 @@ ManualUpload = function() {
     function doUpload() {
         var contents = document.getElementById('profile_text').value;
         var doc = JSON.parse(contents);
+
         if (doc.comments) {
             doc.comments = '[manual upload from email]\n' + doc.comments;
         } else {
             doc.comments = '[manual upload from email]';
         }
+
+        if (!doc.average_throughput) {
+            var profile = JSON.parse(doc.profile).profile;
+            var index = 0;
+            var averageThroughput = 0;
+            profile.forEach(function (element) {
+                ++index;
+                averageThroughput += (element.throughput_Mbps - averageThroughput) / index;
+            });
+            doc.average_throughput = averageThroughput.toFixed(3);
+        }
+
         $.couch.db(DB_NAME).saveDoc(doc, {
             success: function(data) {
                 document.getElementById('profile_text').value = '';
