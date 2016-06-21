@@ -36,6 +36,7 @@ Main = function () {
     var profileJson;
     var delimiterProfileJson;
     var indexProfileJson;
+    var averageThroughput;
     var lines;
     var textbox;
 
@@ -54,6 +55,7 @@ Main = function () {
         profileJson = '{\n    "profile": [';
         delimiterProfileJson = '\n        ';
         indexProfileJson = 0;
+        averageThroughput = 0;
 
         lines = [];
         textbox = document.getElementById('textbox');
@@ -229,6 +231,7 @@ Main = function () {
             profileJson += delimiterProfileJson + '{"index": "' + indexProfileJson + '", "duration_s": "' + samplePeriodS.toFixed(0) + '", "latency_ms": "' + latency.toFixed(0) + '", "throughput_Mbps": "' + throughput.toFixed(3) + '"}';
             delimiterProfileJson = ',\n        ';
             ++indexProfileJson;
+            averageThroughput += (throughput - averageThroughput) / indexProfileJson;
 
             timeLeftS -= samplePeriodS;
 
@@ -383,6 +386,8 @@ Main = function () {
 
     function uploadProfile(profile) {
         var callback = function (success, doc) {
+            window.onbeforeunload = null;
+
             if (success) {
                 document.getElementById('status').innerHTML = 'Test complete. Thank you.';
             }
@@ -392,8 +397,6 @@ Main = function () {
                     'Akamai VPN. No problem, we have auto-populated an email for you to send us! If for some reason you do not see the email click the link to regenerate it. <a id="email_link" href="' + emailUrl + '">Regenerate the email</a>';
                 document.getElementById('email_link').click();
             }
-
-            window.onbeforeunload = null;
         };
 
         service.addToDocument("username", document.getElementById('text_name').value);
@@ -405,6 +408,7 @@ Main = function () {
         service.addToDocument("url", generateUrl(representationIndex, true));
         service.addToDocument("chunk_size", representation[representationIndex].size);
         service.addToDocument("chunks_downloaded", indexProfileJson);
+        service.addToDocument("average_throughput", averageThroughput.toFixed(3));
         service.addToDocument("profile", profile);
         service.saveDocumentToDB(callback);
     }

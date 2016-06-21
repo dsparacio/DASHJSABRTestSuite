@@ -23,6 +23,7 @@ ProfilerDBDocument = function() {
     this.org = null;
     this.postal = null;
     this.region = null;
+    this.average_throughput = null;
     this.profile = null;
     this.browser_name = null;
     this.browser_fullVersion = null;
