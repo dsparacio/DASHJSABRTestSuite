@@ -27,23 +27,33 @@
             <textarea id="text_comments" rows="4" cols="55" placeholder="Enter Comments (optional)"></textarea>
             <div id="h_spacer"></div>
             <div id="connection_wrapper">
-                <label >Connection type *</label>
+                <label >Connection Type *</label>
                 <div id="h_spacer"></div>
-                <input id="connection_type_3G"    type="radio" name="connection_type">3G</input>
-                <input id="connection_type_4G"    type="radio" name="connection_type">4G</input>
-                <input id="connection_type_WiFi"  type="radio" name="connection_type">WiFi</input>
-                <input id="connection_type_wired" type="radio" name="connection_type">Wired</input>
-                <input id="connection_type_other" type="radio" name="connection_type">Other</input>
-                <input id="connection_vpn" type="checkbox" />via VPN</input>
+                <input id="connection_type_3G" type="radio" name="connection_type">
+                <label for="connection_type_3G">3G</label>
+                <input id="connection_type_4G" type="radio" name="connection_type">
+                <label for="connection_type_4G">4G</label>
+                <input id="connection_type_WiFi"  type="radio" name="connection_type">
+                <label for="connection_type_WiFi">WiFi</label>
+                <input id="connection_type_wired" type="radio" name="connection_type">
+                <label for="connection_type_wired">Wired</label>
+                <input id="connection_type_other" type="radio" name="connection_type">
+                <label for="connection_type_other">Other</label>
+                <input id="connection_vpn" type="checkbox" />
+                <label for="connection_vpn">via VPN</label>
             </div>
             <div id="h_spacer"></div>
             <div id="duration_wrapper">
                 <label >Test duration *</label>
                 <div id="h_spacer"></div>
-                <input id="duration5"  type="radio" name="duration">5</input>
-                <input id="duration15" type="radio" name="duration" checked >15</input>
-                <input id="duration30" type="radio" name="duration" >30</input>
-                <input id="duration60" type="radio" name="duration" >60 minutes</input>
+                <input id="duration5"  type="radio" name="duration">
+                <label for="duration5">5</label>
+                <input id="duration15" type="radio" name="duration" checked>
+                <label for="duration15">15</label>
+                <input id="duration30" type="radio" name="duration">
+                <label for="duration30">30</label>
+                <input id="duration60" type="radio" name="duration">
+                <label for="duration60">60 minutes</label>
                 <span id="estimate"></span>
             </div>
             <div id="h_spacer"></div>
