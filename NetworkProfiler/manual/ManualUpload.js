@@ -11,6 +11,9 @@ ManualUpload = function() {
 
     function doUpload() {
         var contents = document.getElementById('profile_text').value;
+        contents = contents.substring(contents.indexOf('{'));
+        contents = contents.substring(0, contents.lastIndexOf('}') + 1);
+        contents = contents.replace(/\n/g, '\\n');
         var doc = JSON.parse(contents);
 
         if (doc.comments) {
