@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Network Measurement Database Upload</title>
+    <meta name="description" content="" />
+    <script src="../../libs/jquery/jquery.js"></script>
+    <script src="../../libs/jquery/jquery.couch.js"></script>
+    <script src="ManualUpload.js"></script>
+
+    <body onload="new ManualUpload().init()">
+        <textarea id="profile_text" rows="10" cols="80" placeholder="Paste email contents here."></textarea>
+        <br/>
+        <button id="upload_button" type="button">Upload</button>
+    </body>
+</html>
