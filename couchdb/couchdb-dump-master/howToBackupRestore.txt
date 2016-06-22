@@ -2,4 +2,4 @@ Restore
 bash couchdb-backup.sh -r -H http://dev-mediac-osqa01.kendall.corp.akamai.com:5984 -d test_restore -f network_profiler_backup6-21.json
 
 Backup
-bash couchdb-backup.sh -b -H http://dev-mediac-osqa01.kendall.corp.akamai.com:5984 -d network_profiler -f network_profiler_backup6-21.json
+bash couchdb-backup.sh -b -H http://dev-mediac-osqa01.kendall.corp.akamai.com:5984 -d network_profiler -f network_profiler_backup6-22.json
