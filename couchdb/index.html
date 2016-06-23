@@ -8,22 +8,17 @@
         var DB_DEV = 'network_profiler_dev';
         var DB_PROD = 'network_profiler';
         var DB_NAME = DB_PROD;
+        var BASE = "http://dev-mediac-osqa01.kendall.corp.akamai.com:5984/"+DB_NAME+"/_design/profiler/";
 
         var configs = {
             missingThroughput: {view: 'MissingThroughput' , handler:'averager'},
             missingVariance: {view: 'MissingVariance' , handler:'variancer'}
         }
 
-
-        var BASE = "http://dev-mediac-osqa01.kendall.corp.akamai.com:5984/"+DB_NAME+"/_design/profiler/";
-
-
-
         function init() {
             //doUpdate(configs.missingThroughput);
-            doUpdate(configs.missingVariance);
+            //doUpdate(configs.missingVariance);
         }
-
 
         function doUpdate(config) {
             var viewURL = BASE + '_view/' + config.view;
@@ -51,14 +46,9 @@
 
             xhr.send();
         }
-
-
-
-
     </script>
 
 </head>
 <body onload="init()">
-
 </body>
 </html>

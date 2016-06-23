@@ -5,7 +5,7 @@ NetworkModulator = function(callback) {
     //     $ browsermob-proxy --port 8080
     //     $ curl -X POST -d 'port=8008' http://localhost:8080/proxy'
 
-    var PROXY_CONTROL_URL = 'http://localhost:8080/proxy/8008/limit';
+    var PROXY_CONTROL_URL = 'http://localhost:8081/proxy/8008/limit';
     var profileStepCallback = callback;
     var profile = null;
     var currentProfileIndex = NaN;

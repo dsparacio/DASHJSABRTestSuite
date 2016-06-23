@@ -15,10 +15,10 @@ Harness = function () {
     var currentABRSuiteIndex = 0;
 
     function init() {
-
+        
         player = dashjs.MediaPlayer().create();
-        player.enableLastBitrateCaching(false);
         player.initialize(document.getElementById('video'), null, true);
+        player.enableLastBitrateCaching(false);
         player.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, onPlaybackStarted);
         player.on(dashjs.MediaPlayer.events.PLAYBACK_ENDED, onPlaybackEnded);
         player.on(dashjs.MediaPlayer.events.PLAYBACK_ERROR, onError);

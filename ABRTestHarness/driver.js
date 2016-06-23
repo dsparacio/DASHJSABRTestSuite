@@ -1,10 +1,31 @@
 var proxy = require('selenium-webdriver/proxy');
-var webdriver = require('selenium-webdriver');
-var capabilities = webdriver.Capabilities.chrome();
-var driver = new webdriver.Builder().usingServer().withCapabilities(capabilities).setProxy(proxy.manual({http: '127.0.0.1:8008'})).build();
+var webdriver = require('browserstack-webdriver');
 
-capabilities.applicationCacheEnabled = false;
-driver.get("http://localhost:8000/index.html");
+var capabilities = {
+    "browserName": "Chrome",
+    "os": "Windows",
+    "os_version": "7",
+    'resolution' : '1024x768',
+    'browserstack.user' : 'dansparacio1',
+    'browserstack.key' : 'sZF23o8qK6HfqwKyjTpn',
+    'browserstack.local': true,
+    'browserstack.debug': true,
+    'applicationCacheEnabled' : false
+}
+
+
+
+var driver = new webdriver.Builder()
+    .usingServer('http://hub.browserstack.com/wd/hub')
+    .withCapabilities(capabilities)
+    .build();
+
+
+driver.get("http://localhost:8000/ABRTestHarness/index.html");
+
+
+
+
 
 
 
