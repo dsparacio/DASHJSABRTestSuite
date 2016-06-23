@@ -46,8 +46,8 @@ Harness = function () {
             currentABRSuiteIndex = 0;
             networkProfileService.initialize(config.profileList, nextGroup);
         } else {
-            console.log("end of all test instead of looping return null in getNextSessionConfig- " +
-                "and do something meaningful at end of test like stop test.");
+            console.log("end of all tests");
+            window.close();
         }
 
     }
@@ -102,7 +102,7 @@ Harness = function () {
     function getNextSessionConfig() {
 
         if (nextConfigIndex === configs.length) {
-            nextConfigIndex = 0;
+            return null;
         }
 
         var config = configs[nextConfigIndex];
