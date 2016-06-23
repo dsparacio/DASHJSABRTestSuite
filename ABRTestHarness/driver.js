@@ -6,8 +6,6 @@ var capabilities = {
     "os": "Windows",
     "os_version": "7",
     'resolution' : '1024x768',
-    'browserstack.user' : 'dansparacio1',
-    'browserstack.key' : 'sZF23o8qK6HfqwKyjTpn',
     'browserstack.local': true,
     'browserstack.debug': true,
     'applicationCacheEnabled' : false
