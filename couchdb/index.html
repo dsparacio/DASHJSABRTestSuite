@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <script>
+
+        var DB_DEV = 'network_profiler_dev';
+        var DB_PROD = 'network_profiler';
+        var DB_NAME = DB_PROD;
+
+        var configs = {
+            missingThroughput: {view: 'MissingThroughput' , handler:'averager'},
+            missingVariance: {view: 'MissingVariance' , handler:'variancer'}
+        }
+
+
+        var BASE = "http://dev-mediac-osqa01.kendall.corp.akamai.com:5984/"+DB_NAME+"/_design/profiler/";
+
+
+
+        function init() {
+            //doUpdate(configs.missingThroughput);
+            doUpdate(configs.missingVariance);
+        }
+
+
+        function doUpdate(config) {
+            var viewURL = BASE + '_view/' + config.view;
+            var handlerURL = BASE + '_update/' + config.handler +'/';
+            var xhr = new XMLHttpRequest();
+
+            xhr.open('GET', viewURL);
+            xhr.onloadend = function() {
+                if (xhr.status >= 200 && xhr.status <= 299) {
+
+                    var data = JSON.parse(xhr.response);
+
+                    data.rows.forEach(function(element, index, arr) {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('PUT', handlerURL + element.id);
+                        xhr.onloadend = function() {
+                            if (xhr.status >= 200 && xhr.status <= 299) {
+                                console.log(xhr.response, index, element.id);
+                            }
+                        }
+                        xhr.send();
+                    });
+                }
+            }
+
+            xhr.send();
+        }
+
+
+
+
+    </script>
+
+</head>
+<body onload="init()">
+
+</body>
+</html>

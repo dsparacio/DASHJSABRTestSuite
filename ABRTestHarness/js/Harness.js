@@ -17,6 +17,7 @@ Harness = function () {
     function init() {
 
         player = dashjs.MediaPlayer().create();
+        player.enableLastBitrateCaching(false);
         player.initialize(document.getElementById('video'), null, true);
         player.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, onPlaybackStarted);
         player.on(dashjs.MediaPlayer.events.PLAYBACK_ENDED, onPlaybackEnded);
