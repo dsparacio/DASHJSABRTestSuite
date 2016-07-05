@@ -23,7 +23,8 @@ Main = function () {
     }
 
     function changeDatabase() {
-        groups = {};
+        $("#db_select").prop('disabled', true);
+        groups = [];
         $("#group_select").empty();
         $("#id_select").empty();
 
@@ -41,34 +42,53 @@ Main = function () {
             return;
         }
 
-        // TODO: write couch view to yield _id, id, group_id
+        // TODO: write couch view to yield _id, id, group_id, wallclockTime, abr, fastSwitch
         // Note: below implementation is inefficient as it is written with above TODO in mind
 
         $.couch.db(dbName).allDocs({
             success: function(allData) {
-                var elements = Array(allData.total_rows);
-                var remaining = allData.total_rows;
+                var elements = [];
 
                 allData.rows.forEach(function (element, index) {
                     $.couch.db(dbName).openDoc(element.id, {
                         success: function(data) {
 
-                            // keep order for consistency between runs
-                            elements[index] = {_id: data._id, id: data.id, groupId: data.group_id};
+                            elements.push({_id: data._id, id: data.id, groupId: data.group_id, wallclock: data.wallclockTime, abr: data.abr, fastSwitch: data.fastSwitch});
 
-                            --remaining;
-                            if (remaining === 0) {
+                            if (elements.length === allData.total_rows) {
 
                                 ////////////////////
                                 // we now have all elements
 
                                 elements.forEach(function (e) {
-                                    if (!groups[e.groupId]) {
-                                        groups[e.groupId] = [];
-                                        $("#group_select").append('<option value="' + e.groupId + '">' + e.groupId + '</option>');
+                                    var g = null;
+                                    var groupIndex = groups[e.groupId];
+                                    if (isNaN(groupIndex)) {
+                                        groupIndex = groups.length;
+                                        groups[e.groupId] = groupIndex;
+                                        g = [];
+                                        g.groupId = e.groupId;
+                                        groups.push(g);
+                                    } else {
+                                        g = groups[groupIndex];
                                     }
-                                    groups[e.groupId].push(e);
+                                    g.push(e);
                                 });
+
+                                groups.forEach(function (g) {
+                                    g.sort(function (a, b) { return a.wallclock - b.wallclock; });
+                                    g.firstWallclock = g[0].wallclock;
+                                });
+
+                                groups.sort(function (a, b) { return a.firstWallclock - b.firstWallclock; });
+
+                                groups.forEach(function (e, i) {
+                                    groups[e.groupId] = i;
+                                    var info = new Date(e.firstWallclock) + ' (' + e.length + ')';
+                                    $("#group_select").append('<option value="' + e.groupId + '">' + info + '</option>');
+                                });
+
+                                $("#db_select").prop('disabled', false);
 
                                 changeGroup();
 
@@ -85,13 +105,18 @@ Main = function () {
     function changeGroup() {
         $("#id_select").empty();
 
-        var g = groups[$("#group_select").val()];
+        var groupIndex = groups[$("#group_select").val()];
+        if (isNaN(groupIndex)) {
+            return;
+        }
+        var g = groups[groupIndex];
         if (!g) {
             return;
         }
 
         g.forEach(function (e) {
-            $("#id_select").append('<option value="' + e._id + '">' + e.id + '</option>');
+            var info = 'ABR: ' + e.abr + ', fastSwitch: ' + e.fastSwitch;
+            $("#id_select").append('<option value="' + e._id + '">' + info + '</option>');
         });
 
         changeId();
