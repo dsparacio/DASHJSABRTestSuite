@@ -303,6 +303,22 @@ Main = function () {
             throughputChart.destroy();
         }
 
+        var max = NaN;
+        if (setThroughput.length > 0) {
+            if (measureThroughput.length > 0) {
+                max = Math.max(setThroughput[setThroughput.length - 1].x, measureThroughput[measureThroughput.length - 1].x);
+            } else {
+                max = setThroughput[setThroughput.length - 1].x;
+            }
+        } else {
+            if (measureThroughput.length > 0) {
+                max = measureThroughput[measureThroughput.length - 1].x;
+            }
+        }
+        if (isNaN(max)) {
+            max = 1;
+        }
+
         throughputChart = new Chart(ctx1, {
             type: 'line',
             data: {
@@ -330,7 +346,7 @@ Main = function () {
                         position: 'bottom',
                         ticks: {
                             min: 0,
-                            max: 100
+                            max: max
                         }
                     }]
                 },
