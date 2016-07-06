@@ -42,64 +42,50 @@ Main = function () {
             return;
         }
 
-        // TODO: write couch view to yield _id, id, group_id, wallclockTime, abr, fastSwitch
-        // Note: below implementation is inefficient as it is written with above TODO in mind
+        // TODO: change to non-temp view
 
-        $.couch.db(dbName).allDocs({
-            success: function(allData) {
-                var elements = [];
+        var mapFunction = function (doc) { emit(doc._id, { "_id": doc._id, "id": doc.id, "groupId": doc.group_id, "wallclock": doc.wallclockTime, "abr": doc.abr, "fastSwitch": doc.fastSwitch }); };
 
-                allData.rows.forEach(function (element, index) {
-                    $.couch.db(dbName).openDoc(element.id, {
-                        success: function(data) {
-
-                            elements.push({_id: data._id, id: data.id, groupId: data.group_id, wallclock: data.wallclockTime, abr: data.abr, fastSwitch: data.fastSwitch});
-
-                            if (elements.length === allData.total_rows) {
-
-                                ////////////////////
-                                // we now have all elements
-
-                                elements.forEach(function (e) {
-                                    var g = null;
-                                    var groupIndex = groups[e.groupId];
-                                    if (isNaN(groupIndex)) {
-                                        groupIndex = groups.length;
-                                        groups[e.groupId] = groupIndex;
-                                        g = [];
-                                        g.groupId = e.groupId;
-                                        groups.push(g);
-                                    } else {
-                                        g = groups[groupIndex];
-                                    }
-                                    g.push(e);
-                                });
-
-                                groups.forEach(function (g) {
-                                    g.sort(function (a, b) { return a.wallclock - b.wallclock; });
-                                    g.firstWallclock = g[0].wallclock;
-                                });
-
-                                groups.sort(function (a, b) { return a.firstWallclock - b.firstWallclock; });
-
-                                groups.forEach(function (e, i) {
-                                    groups[e.groupId] = i;
-                                    var info = new Date(e.firstWallclock) + ' (' + e.length + ')';
-                                    $("#group_select").append('<option value="' + e.groupId + '">' + info + '</option>');
-                                });
-
-                                $("#db_select").prop('disabled', false);
-
-                                changeGroup();
-
-                                ////////////////////
-                            }
-                        }
-                    });
+        $.couch.db(dbName).query(mapFunction, "_count", "javascript", {
+            success: function(data) {
+                data.rows.forEach(function (element) {
+                    var e = element.value;
+                    var g = null;
+                    var groupIndex = groups[e.groupId];
+                    if (isNaN(groupIndex)) {
+                        groupIndex = groups.length;
+                        groups[e.groupId] = groupIndex;
+                        g = [];
+                        g.groupId = e.groupId;
+                        groups.push(g);
+                    } else {
+                        g = groups[groupIndex];
+                    }
+                    g.push(e);
                 });
-            }
-        });
 
+                groups.forEach(function (g) {
+                    g.sort(function (a, b) { return a.wallclock - b.wallclock; });
+                    g.firstWallclock = g[0].wallclock;
+                });
+
+                groups.sort(function (a, b) { return a.firstWallclock - b.firstWallclock; });
+
+                groups.forEach(function (e, i) {
+                    groups[e.groupId] = i;
+                    var info = new Date(e.firstWallclock) + ' (' + e.length + ')';
+                    $("#group_select").append('<option value="' + e.groupId + '">' + info + '</option>');
+                });
+
+                $("#db_select").prop('disabled', false);
+
+                changeGroup();
+            },
+            error: function(status) {
+                console.log(status);
+            },
+            reduce: false
+        });
     }
 
     function changeGroup() {
@@ -325,7 +311,8 @@ Main = function () {
                         label: 'set throughput',
                         fill: false,
                         lineTension: 0,
-                        data: setThroughput
+                        data: setThroughput,
+                        borderColor: 'rgba(192,0,0,0.9)'
                     },
                     {
                         label: 'measured throughput',
@@ -343,7 +330,7 @@ Main = function () {
                         position: 'bottom',
                         ticks: {
                             min: 0,
-                            max: 600
+                            max: 100
                         }
                     }]
                 },
