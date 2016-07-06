@@ -1,0 +1,10 @@
+{
+  "name": "dashjs-test",
+  "version": "0.1.0",
+  "devDependencies": {},
+  "dependencies": {
+    "browserstack-webdriver": "^2.41.1",
+    "commander": "^2.9.0",
+    "selenium-webdriver": "^2.48.2"
+  }
+}
