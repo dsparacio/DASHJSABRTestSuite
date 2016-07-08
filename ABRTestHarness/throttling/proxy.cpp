@@ -1,6 +1,17 @@
 // compile: c++ -O3 -std=c++11 -o proxy proxy.cpp
 // run:     ./proxy 1.2.3.4 8082
 
+/*
+ * Known issues:
+ *
+ * 1. Resolving a host name blocks all pending proxy operations.
+ * 2. Does not support IPv6.
+ * 3. Only works if client lists exactly one method: no authentication.
+ * 4. Expects SOCKS5 control messages to be read/written in one recv/send call (highly likely).
+ * 5. SOCKS5 error reporting is not done.
+ * 6. Does not handle unexpected errors gracefully.
+ */
+
 #include <iostream>
 #include <list>
 #include <string>
@@ -26,6 +37,8 @@ struct connection {
     connection_state state;
     int fd_a;
     int fd_b;
+    bool eof_from_a;
+    bool eof_from_b;
     int len_a_to_b;
     int len_b_to_a;
     int offset_a_to_b;
@@ -37,6 +50,8 @@ struct connection {
         : state(cs_established),
           fd_a(a),
           fd_b(b),
+          eof_from_a(false),
+          eof_from_b(false),
           len_a_to_b(0),
           len_b_to_a(0),
           offset_a_to_b(0),
@@ -48,6 +63,8 @@ struct connection {
         : state(cs_s5_client_greet),
           fd_a(a),
           fd_b(-1),
+          eof_from_a(false),
+          eof_from_b(false),
           len_a_to_b(0),
           len_b_to_a(0),
           offset_a_to_b(0),
@@ -217,7 +234,7 @@ int main(int argc, char** argv)
                         nfds = (*iter)->fd_b;
                     FD_SET((*iter)->fd_b, &writefds);
                 }
-                if ((*iter)->len_a_to_b < buffer_size) {
+                if ((*iter)->len_a_to_b < buffer_size && !(*iter)->eof_from_a) {
                     if ((*iter)->fd_a > nfds)
                         nfds = (*iter)->fd_a;
                     FD_SET((*iter)->fd_a, &readfds);
@@ -228,7 +245,7 @@ int main(int argc, char** argv)
                         nfds = (*iter)->fd_a;
                     FD_SET((*iter)->fd_a, &writefds);
                 }
-                if ((*iter)->len_b_to_a < buffer_size) {
+                if ((*iter)->len_b_to_a < buffer_size && !(*iter)->eof_from_b) {
                     if ((*iter)->fd_b > nfds)
                         nfds = (*iter)->fd_b;
                     FD_SET((*iter)->fd_b, &readfds);
@@ -361,10 +378,16 @@ int main(int argc, char** argv)
                                 (*iter)->offset_a_to_b,
                                 (*iter)->len_a_to_b,
                                 (*iter)->buffer_a_to_b);
-                    if (r <= 0) {
+                    if (r < 0) {
                         del = true;
-                        if (r < 0) {
-                            fail_txt_1 = "failed reading from \"in\"";
+                        fail_txt_1 = "failed reading from \"in\"";
+                    } else if (r == 0) {
+                        (*iter)->eof_from_a = true;
+                        if ((*iter)->len_a_to_b == 0) {
+                            shutdown_socket_send((*iter)->fd_b);
+                            if ((*iter)->eof_from_b && (*iter)->len_b_to_a == 0) {
+                                del = true;
+                            }
                         }
                     }
                 }
@@ -374,10 +397,16 @@ int main(int argc, char** argv)
                                 (*iter)->offset_b_to_a,
                                 (*iter)->len_b_to_a,
                                 (*iter)->buffer_b_to_a);
-                    if (r <= 0) {
+                    if (r < 0) {
                         del = true;
-                        if (r < 0) {
-                            fail_txt_1 = "failed reading from \"out\"";
+                        fail_txt_1 = "failed reading from \"out\"";
+                    } else if (r == 0) {
+                        (*iter)->eof_from_b = true;
+                        if ((*iter)->len_b_to_a == 0) {
+                            shutdown_socket_send((*iter)->fd_a);
+                            if ((*iter)->eof_from_a && (*iter)->len_a_to_b == 0) {
+                                del = true;
+                            }
                         }
                     }
                 }
@@ -390,6 +419,11 @@ int main(int argc, char** argv)
                     if (r <= 0) {
                         del = true;
                         fail_txt_1 = "failed writing to \"in\"";
+                    } else if ((*iter)->eof_from_b && (*iter)->len_b_to_a == 0) {
+                        shutdown_socket_send((*iter)->fd_a);
+                        if ((*iter)->eof_from_a && (*iter)->len_a_to_b == 0) {
+                            del = true;
+                        }
                     }
                 }
 
@@ -401,6 +435,11 @@ int main(int argc, char** argv)
                     if (r <= 0) {
                         del = true;
                         fail_txt_1 = "failed writing to \"out\"";
+                    } else if ((*iter)->eof_from_a && (*iter)->len_a_to_b == 0) {
+                        shutdown_socket_send((*iter)->fd_b);
+                        if ((*iter)->eof_from_b && (*iter)->len_b_to_a == 0) {
+                            del = true;
+                        }
                     }
                 }
 

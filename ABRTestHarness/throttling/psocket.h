@@ -28,6 +28,15 @@ static void close_socket(int fd)
     closesocket(fd);
 }
 
+static int shutdown_socket_send(int fd)
+{
+    int r = shutdown(fd, SD_SEND);
+    if (r == 0)
+        return 0;
+    else
+        return -1;
+}
+
 static void init_sockets()
 {
     WSADATA wsaData;
@@ -87,6 +96,15 @@ static int non_block(int fd)
 static void close_socket(int fd)
 {
     close(fd);
+}
+
+static int shutdown_socket_send(int fd)
+{
+    int r = shutdown(fd, SHUT_WR);
+    if (r == 0)
+        return 0;
+    else
+        return -1;
 }
 
 static void init_sockets()
