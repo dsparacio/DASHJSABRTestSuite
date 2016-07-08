@@ -1,5 +1,5 @@
 # prepare: ipfw add 50 pipe 1 tcp from any 80 to any
-# run:     python3 control.py
+# run:     python3 control.py 1.2.3.4 8081
 # need:    response.txt
 
 import sys

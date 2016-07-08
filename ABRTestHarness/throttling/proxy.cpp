@@ -1,5 +1,5 @@
 // compile: c++ -O3 -std=c++11 -o proxy proxy.cpp
-// run:     ./proxy 127.0.0.1 8082
+// run:     ./proxy 1.2.3.4 8082
 
 #include <iostream>
 #include <list>
