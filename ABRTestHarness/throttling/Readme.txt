@@ -5,6 +5,7 @@ Note: Make sure dummynet is up and running.
 
 3. Compile proxy in VM.
 $> c++ -O3 -std=c++11 -o proxy proxy.cpp
+Note: compilation needs psocket.h
 
 4. Run proxy in VM.
 $> ./proxy 1.2.3.4 8082
