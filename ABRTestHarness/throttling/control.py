@@ -45,7 +45,7 @@ def UseSettings(path):
 
         str = 'ms'
         i = path.index(str)
-        bw = int(path[0:i])
+        delay = int(path[0:i])
         path = path[i + len(str):]
 
         if len(path) != 0:
