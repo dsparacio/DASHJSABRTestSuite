@@ -8,13 +8,13 @@ $> c++ -O3 -std=c++11 -o proxy proxy.cpp
 Note: compilation needs psocket.h
 
 4. Run proxy in VM.
-$> ./proxy 1.2.3.4 8082
+$> ./proxy 8082
 
 5. Create pipe in VM for traffic received from http port 80.
 #> ipfw add 50 pipe 1 tcp from any 80 to any
 
 6. Run python script in VM to configure pipe.
-#> python3 control.py 1.2.3.4 8081
+#> python3 control.py 8081
 Note: control.py needs access to response.txt
 
 7. Set browser to use SOCKS5 proxy at localhost:8082

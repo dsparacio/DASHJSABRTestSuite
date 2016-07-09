@@ -1,5 +1,5 @@
 // compile: c++ -O3 -std=c++11 -o proxy proxy.cpp
-// run:     ./proxy 1.2.3.4 8082
+// run:     ./proxy 8082
 
 /*
  * Known issues:
@@ -30,6 +30,7 @@ enum connection_state {
     cs_s5_client_greet,
     cs_s5_server_auth,
     cs_s5_client_request,
+    cs_connecting,
     cs_established
 };
 
@@ -47,7 +48,7 @@ struct connection {
     char buffer_b_to_a[buffer_size];
 
     connection(int a, int b)
-        : state(cs_established),
+        : state(cs_connecting),
           fd_a(a),
           fd_b(b),
           eof_from_a(false),
@@ -148,6 +149,28 @@ int do_send(int fd, int& offset, int& len, char* buffer)
     return r;
 }
 
+void transform_localhost(char* buf, int& n, const char* addr4)
+{
+    if (buf[3] == 1 && n == 10 && buf[4] == 127) {
+        // note that localhost has all 127.0.0.0/8 not just 127.0.0.1
+        memcpy(buf + 4, addr4, 4);
+        std::cout << "tranform localhost ipv4" << std::endl;
+    } else if (buf[3] == 3 && (unsigned char)buf[4] + 7 == n) {
+        char tmp = buf[n - 2];
+        buf[n - 2] = '\0';
+        bool is_lh = ((n == 16 && strcmp(buf + 5, "localhost") == 0) ||
+                      (n >= 16 && buf[5] == '1' && buf[6] == '2' && buf[7] == '7' && buf[8] == '.'));
+        buf[n - 2] = tmp;
+        if (is_lh) {
+            memcpy(buf + 8, buf + n - 2, 2);
+            memcpy(buf + 4, addr4, 4);
+            buf[3] = 1;
+            n = 10;
+            std::cout << "tranform localhost domain" << std::endl;
+        }
+    }
+}
+
 int main(int argc, char** argv)
 {
     bool socks5;
@@ -155,10 +178,17 @@ int main(int argc, char** argv)
     int r;
     init_sockets();
 
-    assert(argc >= 3);
+    assert(argc >= 2);
 
-    uint32_t addr = parse_addr(argv[1]);
-    uint16_t port = parse_port(argv[2]);
+    uint32_t addr = 0;
+    uint16_t port = 0;
+    if (argc == 2) {
+        addr = INADDR_ANY;
+        port = parse_port(argv[1]);
+    } else {
+        addr = parse_addr(argv[1]);
+        port = parse_port(argv[2]);
+    }
     sockaddr_in saddr;
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
@@ -178,7 +208,7 @@ int main(int argc, char** argv)
     r = listen(server_socket, 16);
     assert(r == 0);
 
-    socks5 = (argc == 3);
+    socks5 = (argc <= 3);
 
     if (!socks5) {
         assert(argc == 5);
@@ -228,6 +258,12 @@ int main(int argc, char** argv)
                     nfds = (*iter)->fd_a;
                 break;
 
+            case cs_connecting:
+                FD_SET((*iter)->fd_b, &writefds);
+                if ((*iter)->fd_b > nfds)
+                    nfds = (*iter)->fd_b;
+                break;
+
             case cs_established:
                 if ((*iter)->len_a_to_b > 0) {
                     if ((*iter)->fd_b > nfds)
@@ -275,7 +311,7 @@ int main(int argc, char** argv)
                 if (!FD_ISSET((*iter)->fd_a, &readfds))
                     break;
 
-                buf = (*iter)->buffer_a_to_b;
+                buf = (*iter)->buffer_a_to_b + 4;
                 r = recv((*iter)->fd_a, buf, 257, 0);
                 if (r < 2 || buf[0] != 5 || (unsigned char)buf[1] + 2 != r) {
                     del = true;
@@ -305,13 +341,16 @@ int main(int argc, char** argv)
                 if (!FD_ISSET((*iter)->fd_a, &readfds))
                     break;
 
-                buf = (*iter)->buffer_a_to_b;
+                buf = (*iter)->buffer_a_to_b + 4;
                 r = recv((*iter)->fd_a, buf, 262, 0);
                 if (r < 5 || buf[0] != 5 || buf[1] != 1 || buf[2] != 0) {
                     del = true;
                     fail_txt_1 = "failed reading SOCKS5 client connect";
                     break;
                 }
+
+                // transform_localhost(buf, r, buf - 4); // map localhost to IP of client
+
                 if (buf[3] == 1 && r == 10) {
                     saddr.sin_family = AF_INET;
                     memcpy(&saddr.sin_addr.s_addr, buf + 4, 4);
@@ -368,6 +407,17 @@ int main(int argc, char** argv)
                 memcpy(buf + 4, &saddr.sin_addr.s_addr, 4);
                 memcpy(buf + 8, &saddr.sin_port, 2);
                 (*iter)->len_b_to_a = 10;
+
+                (*iter)->state = cs_connecting;
+                break;
+
+            case cs_connecting:
+                if (!FD_ISSET((*iter)->fd_b, &writefds))
+                    break;
+                if (is_socket_error((*iter)->fd_b)) {
+                    del = true;
+                    fail_txt_1 = "failed to connect to remote host";
+                }
 
                 (*iter)->state = cs_established;
                 break;
@@ -508,6 +558,7 @@ int main(int argc, char** argv)
                           << format_port(ntohs(saddr2.sin_port)) << std::endl;
 
                 connections.push_back(new connection(a));
+                memcpy(connections.back()->buffer_a_to_b, &saddr2.sin_addr.s_addr, 4);
             }
         }
     }

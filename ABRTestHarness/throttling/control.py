@@ -1,5 +1,5 @@
 # prepare: ipfw add 50 pipe 1 tcp from any 80 to any
-# run:     python3 control.py 1.2.3.4 8081
+# run:     python3 control.py 8081
 # need:    response.txt
 
 import sys
@@ -9,7 +9,7 @@ import subprocess
 import socketserver
 import http.server
 
-server_address = (sys.argv[1], int(sys.argv[2]))
+server_address = ('', int(sys.argv[1]))
 
 def HandleInterrupt(signal, frame):
     os._exit(0)
@@ -26,23 +26,33 @@ def SetNetwork(bw, delay):
         print('ERROR: Cannot call ipfw.')
         # TODO: return some useful http status
 
-def Parse(str, prefix, suffix):
-    i = str.find(prefix)
-    if i < 0:
-        throw
-    j = str[i:].find(suffix)
-    if j < 0:
-        throw
-    return int(str[i + len(prefix) : i + j])
-
-def UseSettings(p):
-    if not 'settings' in p:
-        return False
+def UseSettings(path):
     try:
-        bw = Parse(p, 'bw=', 'Kbps')
-        delay = Parse(p, 'delay=', 'ms')
+        str = '/settings?bw=';
+        if path.index(str) != 0:
+            return False
+        path = path[len(str):]
+
+        str = 'Kbps'
+        i = path.index(str)
+        bw = int(path[0:i])
+        path = path[i + len(str):]
+
+        str = '&delay='
+        if path.index(str) != 0:
+            return False
+        path = path[len(str):]
+
+        str = 'ms'
+        i = path.index(str)
+        bw = int(path[0:i])
+        path = path[i + len(str):]
+
+        if len(path) != 0:
+            return False
     except:
         return False
+
     SetNetwork(bw, delay)
     return True
 

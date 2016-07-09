@@ -4,7 +4,6 @@
 #ifdef _WIN32
 
 #define _WIN32_WINNT  0x501
-//#include <w32api.h>
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -32,6 +31,17 @@ static int shutdown_socket_send(int fd)
 {
     int r = shutdown(fd, SD_SEND);
     if (r == 0)
+        return 0;
+    else
+        return -1;
+}
+
+static int is_socket_error(int fd)
+{
+    int error = 0;
+    int len = sizeof(error);
+    int r = getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*)&error, &len);
+    if (r == 0 && error == 0)
         return 0;
     else
         return -1;
@@ -72,11 +82,13 @@ void sleep_ms(int timeout_ms)
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/time.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <signal.h>
 
 typedef void* sockopt_ptr_t;
 typedef socklen_t sockaddr_len_t;
@@ -107,8 +119,20 @@ static int shutdown_socket_send(int fd)
         return -1;
 }
 
+static int is_socket_error(int fd)
+{
+    int error = 0;
+    socklen_t len = sizeof(error);
+    int r = getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len);
+    if (r == 0 && error == 0)
+        return 0;
+    else
+        return -1;
+}
+
 static void init_sockets()
 {
+    signal(SIGPIPE, SIG_IGN);
 }
 
 static unsigned get_raw_clock_ms()
