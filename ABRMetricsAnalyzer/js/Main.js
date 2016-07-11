@@ -42,11 +42,7 @@ Main = function () {
             return;
         }
 
-        // TODO: change to non-temp view
-
-        var mapFunction = function (doc) { emit(doc._id, { "_id": doc._id, "id": doc.id, "groupId": doc.group_id, "wallclock": doc.wallclockTime, "abr": doc.abr, "fastSwitch": doc.fastSwitch }); };
-
-        $.couch.db(dbName).query(mapFunction, "_count", "javascript", {
+        $.couch.db(dbName).view("analyzer/all-doc-info", {
             success: function(data) {
                 data.rows.forEach(function (element) {
                     var e = element.value;
@@ -83,8 +79,7 @@ Main = function () {
             },
             error: function(status) {
                 console.log(status);
-            },
-            reduce: false
+            }
         });
     }
 
@@ -199,8 +194,12 @@ Main = function () {
                     info = element.fragmentRequest;
                     o.latency = parseTime(info.firstByteDate) - parseTime(info.requestStartDate);
                     // TODO: figure out latency - at the moment estimate throughput with the starting time being time of request rather than time of first byte
-                    // o.throughput = 0.008 * info.bytesLoaded / (parseTime(info.requestEndDate) - parseTime(info.firstByteDate));
-                    o.throughput = 0.008 * info.bytesLoaded / (parseTime(info.requestEndDate) - parseTime(info.requestStartDate));
+                    o.throughput = 0.008 * info.bytesTotal / (parseTime(info.requestEndDate) - parseTime(info.firstByteDate));
+                    // o.throughput = 0.008 * info.bytesTotal / (parseTime(info.requestEndDate) - parseTime(info.requestStartDate));
+                    // r bytes/ms
+                    // 8r bits/ms
+                    // 8000r bits/s
+                    // 0.008r Mbits/s
                     o.index = info.index;
                     o.quality = info.quality;
                     o.startTime = 0.001 * (parseTime(info.requestStartDate) - startTime);
