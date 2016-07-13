@@ -217,6 +217,7 @@ Harness = function () {
         metricSet.sessionInfo = currentSessionInfo;
         try{
             metricSet.bufferLevel = player.getBufferLength();
+            metricSet.bufferLevelVideo = player.getBufferLength('video');
             metricSet.playheadTime = player.time();
             metricSet.lastQualityLoaded = isNaN(metricSet.lastQualityLoaded) ? player.getQualityFor('video') || player.getQualityFor('audio') : metricSet.lastQualityLoaded;
         }catch(e){};

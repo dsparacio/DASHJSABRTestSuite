@@ -4,6 +4,7 @@ MetricSet = function() {
     this.eventTime = NaN;
     this.wallclockTime = NaN;
     this.bufferLevel = NaN;
+    this.bufferLevelVideo = NaN;
     this.playheadTime = NaN;
     this.lastQualityLoaded = NaN;
     this.nextQualityLoading = NaN;  //(if this value is not NaN then it means quality change event occurred )
