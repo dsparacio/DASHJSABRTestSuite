@@ -94,7 +94,7 @@ def UseSettings(path):
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
-    allow_reuse_addr = True
+    allow_reuse_address = True
 
 class Handler(http.server.SimpleHTTPRequestHandler):
 
@@ -108,6 +108,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', len(content_bytes))
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
             self.end_headers()
             self.wfile.write(content_bytes)
         else:
