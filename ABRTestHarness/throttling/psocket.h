@@ -1,12 +1,19 @@
 #ifndef PSOCKET_H
 #define PSOCKET_H
 
+/*
+ * Started as portable layer for Windows/POSIX sockets.
+ * Now includes some more stuff such as very basic threading.
+ */
+
 #ifdef _WIN32
 
+#include <iostream>
 #define _WIN32_WINNT  0x501
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <string.h>
 #include <assert.h>
 
 typedef char* sockopt_ptr_t;
@@ -61,7 +68,7 @@ static unsigned get_raw_clock_ms()
 
 static unsigned clock_start = get_raw_clock_ms() - 1;
 
-static unsigned get_clock_ms()
+unsigned get_clock_ms()
 {
     return get_raw_clock_ms() - clock_start;
 }
@@ -77,6 +84,30 @@ void sleep_ms(int timeout_ms)
     Sleep(timeout_ms);
 }
 
+struct thread_info {
+    void (*function)(void*);
+    void* param;
+};
+
+static DWORD WINAPI thread_helper(LPVOID lpParam)
+{
+    thread_info* ti = (thread_info*)lpParam;
+
+    ti->function(ti->param);
+    delete ti;
+    return 0;
+}
+
+static void thread_start(void (*function)(void*), void* param)
+{
+    thread_info* ti = new thread_info;
+    ti->function = function;
+    ti->param = param;
+    HANDLE handle = CreateThread(NULL, 0, thread_helper, ti, 0, NULL);
+    assert(handle != NULL);
+    CloseHandle(handle); // does not terminate thread - just detaches it
+}
+
 #else // ifndef _WIN32
 
 #include <time.h>
@@ -89,6 +120,7 @@ void sleep_ms(int timeout_ms)
 #include <netinet/in.h>
 #include <netdb.h>
 #include <signal.h>
+#include <pthread.h>
 
 typedef void* sockopt_ptr_t;
 typedef socklen_t sockaddr_len_t;
@@ -145,7 +177,7 @@ static unsigned get_raw_clock_ms()
 
 static unsigned clock_start = get_raw_clock_ms() - 1;
 
-static unsigned get_clock_ms()
+unsigned get_clock_ms()
 {
     return get_raw_clock_ms() - clock_start;
 }
@@ -161,6 +193,32 @@ void sleep_ms(int timeout_ms)
     tv.tv_usec = timeout_ms % 1000000;
 
     int r = select(0, NULL, NULL, NULL, &tv);
+    assert(r == 0);
+}
+
+struct thread_info {
+    void (*function)(void*);
+    void* param;
+};
+
+static void* thread_helper(void* param)
+{
+    thread_info* ti = (thread_info*)param;
+
+    ti->function(ti->param);
+    delete ti;
+    return nullptr;
+}
+
+static void thread_start(void (*function)(void*), void* param)
+{
+    thread_info* ti = new thread_info;
+    ti->function = function;
+    ti->param = param;
+    pthread_t handle;
+    int r = pthread_create(&handle, NULL, thread_helper, ti);
+    assert(r == 0);
+    r = pthread_detach(handle);
     assert(r == 0);
 }
 

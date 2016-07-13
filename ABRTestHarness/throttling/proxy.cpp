@@ -1,15 +1,14 @@
-// compile: c++ -O3 -std=c++11 -o proxy proxy.cpp
+// compile: c++ -O3 -std=c++11 -pthread -o proxy proxy.cpp
 // run:     ./proxy 8082
 
 /*
  * Known issues:
  *
- * 1. Resolving a host name blocks all pending proxy operations.
- * 2. Does not support IPv6.
- * 3. Only works if client lists exactly one method: no authentication.
- * 4. Expects SOCKS5 control messages to be read/written in one recv/send call (highly likely).
- * 5. SOCKS5 error reporting is not done.
- * 6. Does not handle unexpected errors gracefully.
+ * 1. Does not support IPv6 connections.
+ * 2. Only works if client lists exactly one method: no authentication.
+ * 3. Expects SOCKS5 control messages to be read/written in one recv/send call (highly likely).
+ * 4. SOCKS5 error reporting is not done.
+ * 5. Does not handle unexpected errors gracefully.
  */
 
 #include <iostream>
@@ -30,8 +29,17 @@ enum connection_state {
     cs_s5_client_greet,
     cs_s5_server_auth,
     cs_s5_client_request,
+    cs_s5_resolving_name,
     cs_connecting,
     cs_established
+};
+
+struct name_resolution {
+    int fd; // select on read to check when done
+    short port; // store nbo port here
+    int resolved;
+    const char* name;
+    addrinfo* ai;
 };
 
 struct connection {
@@ -44,6 +52,7 @@ struct connection {
     int len_b_to_a;
     int offset_a_to_b;
     int offset_b_to_a;
+    name_resolution* nr;
     char buffer_a_to_b[buffer_size];
     char buffer_b_to_a[buffer_size];
 
@@ -171,6 +180,46 @@ void transform_localhost(char* buf, int& n, const char* addr4)
     }
 }
 
+static void name_resolution_call(void* param)
+{
+    name_resolution* nr = (name_resolution*)param;
+
+    int r = getaddrinfo(nr->name, NULL, NULL, &nr->ai);
+    if (r != 0 || nr->ai->ai_family != AF_INET) {
+        if (nr->ai != NULL) {
+            freeaddrinfo(nr->ai);
+            nr->ai = NULL;
+        }
+    }
+
+    nr->resolved = 1;
+    close_socket(nr->fd); // signal to select
+}
+
+static name_resolution* start_name_resolution(const char* name)
+{
+    name_resolution* nr = new name_resolution;
+    nr->resolved = 0;
+    nr->fd = socket(PF_INET, SOCK_DGRAM, 0);
+    assert(nr->fd >= 0);
+    nr->name = name;
+    thread_start(&name_resolution_call, nr);
+    return nr;
+}
+
+static int finish_name_resolution(name_resolution* nr, sockaddr_in* saddr)
+{
+    int r = 0;
+    if (nr->ai != NULL) {
+        memcpy(&saddr->sin_addr.s_addr, &((sockaddr_in*)nr->ai->ai_addr)->sin_addr.s_addr, 4);
+        freeaddrinfo(nr->ai);
+    } else {
+        r = -1;
+    }
+    delete nr;
+    return r;
+}
+
 int main(int argc, char** argv)
 {
     bool socks5;
@@ -258,6 +307,12 @@ int main(int argc, char** argv)
                     nfds = (*iter)->fd_a;
                 break;
 
+            case cs_s5_resolving_name:
+                FD_SET((*iter)->nr->fd, &readfds);
+                if ((*iter)->nr->fd > nfds)
+                    nfds = (*iter)->nr->fd;
+                break;
+
             case cs_connecting:
                 FD_SET((*iter)->fd_b, &writefds);
                 if ((*iter)->fd_b > nfds)
@@ -297,7 +352,19 @@ int main(int argc, char** argv)
         ++nfds;
 
         r = select(nfds, &readfds, &writefds, NULL, NULL);
-        assert(r >= 0);
+        // TODO: There is a race condition if a "pseudo"-socket is closed its
+        //       fd is reused. This should be very rare and needs ~1hr to resolve.
+        if (r < 0) {
+            // indication that some nr->fd is closed just before select
+            // so look for such cases
+            FD_ZERO(&readfds);
+            FD_ZERO(&writefds);
+            for (auto iter = connections.begin(); iter != connections.end(); ++iter) {
+                if ((*iter)->state == cs_s5_resolving_name && (*iter)->nr->resolved) {
+                    FD_SET((*iter)->nr->fd, &readfds);
+                }
+            }
+        }
 
         for (auto iter = connections.begin(); iter != connections.end(); ) {
             bool del = false;
@@ -356,28 +423,37 @@ int main(int argc, char** argv)
                     memcpy(&saddr.sin_addr.s_addr, buf + 4, 4);
                     memcpy(&saddr.sin_port, buf + 6, 2);
                 } else if (buf[3] == 3 && (unsigned char)buf[4] + 7 == r) {
-                    addrinfo* ai;
-                    saddr.sin_family = AF_INET;
-                    memcpy(&saddr.sin_port, buf + r - 2, 2);
+                    short port;
+                    memcpy(&port, buf + r - 2, 2);
                     buf[r - 2] = '\0';
-                    r = getaddrinfo(buf + 5, NULL, NULL, &ai);
-                    if (r != 0 || ai->ai_family != AF_INET) {
-                        // || ai->ai_socktype != SOCK_STREAM || ai->ai_addr->sa_family != AF_INET) {
-                        if (ai != nullptr)
-                            freeaddrinfo(ai);
+                    (*iter)->nr = start_name_resolution(buf + 5);
+                    (*iter)->nr->port = port;
+                    (*iter)->state = cs_s5_resolving_name;
+                    break;
+                } else {
+                    del = true;
+                    fail_txt_1 = "unknown SOCKS5 address type";
+                    break;
+                }
+
+                // do not break, run on
+
+            case cs_s5_resolving_name:
+                // avoid this code in run on case
+                if ((*iter)->state == cs_s5_resolving_name) {
+                    if (!FD_ISSET((*iter)->nr->fd, &readfds))
+                        break;
+                    buf = (*iter)->buffer_a_to_b + 4;
+                    saddr.sin_family = AF_INET;
+                    memcpy(&saddr.sin_port, &(*iter)->nr->port, 2);
+                    r = finish_name_resolution((*iter)->nr, &saddr);
+                    if (r != 0) {
                         del = true;
                         fail_txt_1 = "failed looking up SOCKS5 address \"";
                         fail_txt_2 = buf + 5;
                         fail_txt_3 = "\"";
                         break;
                     }
-                    assert(ai != nullptr);
-                    memcpy(&saddr.sin_addr.s_addr, &((sockaddr_in*)ai->ai_addr)->sin_addr.s_addr, 4);
-                    freeaddrinfo(ai);
-                } else {
-                    del = true;
-                    fail_txt_1 = "unknown SOCKS5 address type";
-                    break;
                 }
 
                 assert((*iter)->fd_b == -1);
@@ -398,7 +474,6 @@ int main(int argc, char** argv)
                 }
                 std::cout << std::endl;
 
-                
                 buf = (*iter)->buffer_b_to_a;
                 buf[0] = 5;
                 buf[1] = 0;
