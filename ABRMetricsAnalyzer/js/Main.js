@@ -207,7 +207,7 @@ Main = function () {
                     o.bitrate = info.mediaInfo.bitrateList[info.quality].bandwidth;
 
                     o.dbIndex = index;
-                    o.bytesLoaded = info.bytesLoaded;
+                    o.bytesTotal = info.bytesTotal;
 
                     fragmentMeasurements.push(o);
 
@@ -245,14 +245,21 @@ Main = function () {
 
                 out.push(info.index, info.quality,
                          '(' + (info.delayLoadingTime > startTime ? (0.001 * (info.delayLoadingTime - startTime)).toFixed(3) : '.') + ')',
-                         (0.001 * (parseTime(info.requestStartDate) - startTime)).toFixed(3), '/',
-                         (0.001 * (parseTime(info.firstByteDate) - startTime)).toFixed(3), '/',
-                         (0.001 * (parseTime(info.requestEndDate) - startTime)).toFixed(3));
+                         (0.000008 * info.bytesTotal).toFixed(3) + 'Mbit',
+                         (0.001 * (parseTime(info.requestStartDate) - startTime)).toFixed(3) + '/' +
+                         (0.001 * (parseTime(info.firstByteDate) - startTime)).toFixed(3) + '/' +
+                         (0.001 * (parseTime(info.requestEndDate) - startTime)).toFixed(3) + ' (' +
+                         (0.001 * (parseTime(info.firstByteDate) - parseTime(info.requestStartDate))).toFixed(3) + '/' +
+                         (0.001 * (parseTime(info.requestEndDate) - parseTime(info.firstByteDate))).toFixed(3) + ')',
+                         (0.008 * info.bytesTotal / (parseTime(info.requestEndDate) - parseTime(info.firstByteDate))).toFixed(3) + 'Mbps');
                 break;
 
             case 'qualityChangeStart':
 
                 out.push(element.lastQualityLoaded, '->', element.nextQualityLoading);
+                if (bitrates) {
+                    out.push('(' + (0.001 * bitrates[element.nextQualityLoading]).toFixed(3) + ')');
+                }
                 break;
 
             }

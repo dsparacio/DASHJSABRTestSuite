@@ -47,7 +47,10 @@ Harness = function () {
             networkProfileService.initialize(config.profileList, nextGroup);
         } else {
             console.log("end of all tests");
-            window.close();
+            // wait for 10s to give time for db write
+            // TODO: maybe check db write return status?
+            setTimeout(window.close, 10000);
+            // Note: window.close() only works if window was originally opened with this script.
         }
 
     }
@@ -214,6 +217,7 @@ Harness = function () {
         metricSet.sessionInfo = currentSessionInfo;
         try{
             metricSet.bufferLevel = player.getBufferLength();
+            metricSet.bufferLevelVideo = player.getBufferLength('video');
             metricSet.playheadTime = player.time();
             metricSet.lastQualityLoaded = isNaN(metricSet.lastQualityLoaded) ? player.getQualityFor('video') || player.getQualityFor('audio') : metricSet.lastQualityLoaded;
         }catch(e){};
@@ -256,5 +260,3 @@ Harness = function () {
 Harness.prototype = {
     constructor: Harness
 }
-
-

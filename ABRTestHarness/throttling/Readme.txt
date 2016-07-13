@@ -4,7 +4,7 @@ Note: Make sure dummynet is up and running.
 2. Redirect ports 8081 and 8082 to VM.
 
 3. Compile proxy in VM.
-$> c++ -O3 -std=c++11 -o proxy proxy.cpp
+$> c++ -O3 -std=c++11 -pthread -o proxy proxy.cpp
 Note: compilation needs psocket.h
 
 4. Run proxy in VM.
@@ -15,7 +15,6 @@ $> ./proxy 8082
 
 6. Run python script in VM to configure pipe.
 #> python3 control.py 8081
-Note: control.py needs access to response.txt
 
 7. Set browser to use SOCKS5 proxy at localhost:8082
 E.g. C:\path\to\chrome.exe --disk-cache-dir=nul --proxy-server="socks5://localhost:8082"
