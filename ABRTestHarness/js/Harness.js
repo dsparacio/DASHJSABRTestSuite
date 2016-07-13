@@ -14,6 +14,8 @@ Harness = function () {
     var config = null;
     var currentABRSuiteIndex = 0;
 
+    var watchdogTimer = null;
+
     function init() {
         
         player = dashjs.MediaPlayer().create();
@@ -34,15 +36,19 @@ Harness = function () {
         metricsCollectionService = new MetricsCollectionService();
         networkProfileService = new NetworkProfileService();
 
+        watchdogTimer = setTimeout(window.close, 10000); // shutdown if session does not load in 10s
+
         loadSessionConfig();
     }
 
 
     function nextSession() {
-
+        clearTimeout(watchdogTimer);
         config = getNextSessionConfig();
         //console.log("XXX a", config.fastSwitch, config.url)
         if (config) {
+            // detect failure if session is not done in test duration + 10% + 10s
+            watchdogTimer = setTimeout(window.close, Number(config.test_duration) * 1100 + 10000);
             currentABRSuiteIndex = 0;
             networkProfileService.initialize(config.profileList, nextGroup);
         } else {
@@ -152,6 +158,8 @@ Harness = function () {
             metricSet.lastQualityLoaded = e.oldQuality;
             metricSet.nextQualityLoading = e.newQuality;
             metricSet.isUpShiftInQuality = e.oldQuality < e.newQuality;
+            if (e.reason === undefined)
+                debugger;
             metricSet.switchReason = e.reason;
             captureMetricSet(metricSet);
         }
