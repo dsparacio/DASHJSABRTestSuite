@@ -46,7 +46,7 @@ NetworkModulator = function(callback) {
                 // 0 means unlimited, so avoid
                 kbps = 1;
             }
-            url += '?bw=' + kbpw + 'Kbps';
+            url += '?bw=' + kbps + 'Kbps';
             // do not set latency - it tends to slow down dummynet excessively
             // TODO: investigate this behavior
             // url += '&delay=' + latency + 'ms';
