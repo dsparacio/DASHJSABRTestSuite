@@ -39,12 +39,13 @@ NetworkModulator = function(callback) {
 
     function setProxyThroughput(mbps, latency) {
         var kbps = NaN;
+        mbps = Number(mbps);
         if (isNaN(mbps)) {
             // NaN should clear throttling - this is achieved by setting bw to 0
             kbps = 0;
             latency = 0;
         } else {
-            if (mbps === 0) {
+            if (mbps <= 0.001) {
                 // since 0 clears throttling, choose very low bw for network out
                 kbps = 1;
             }
@@ -54,10 +55,8 @@ NetworkModulator = function(callback) {
         }
 
         var xhr = new XMLHttpRequest();
-
         var url = CONTROL_BASE_URL + '?bw=' + kbps + 'Kbps&delay=' + latency + 'ms';
         xhr.open("GET", url);
-        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         //todo error check to make sure we are setting the proxy throughput
         xhr.send();
     }

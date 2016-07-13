@@ -47,7 +47,10 @@ Harness = function () {
             networkProfileService.initialize(config.profileList, nextGroup);
         } else {
             console.log("end of all tests");
-            window.close();
+            // wait for 10s to give time for db write
+            // TODO: maybe check db write return status?
+            setTimeout(window.close, 10000);
+            // Note: window.close() only works if window was originally opened with this script.
         }
 
     }
@@ -256,5 +259,3 @@ Harness = function () {
 Harness.prototype = {
     constructor: Harness
 }
-
-
