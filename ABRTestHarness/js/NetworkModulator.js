@@ -38,26 +38,25 @@ NetworkModulator = function(callback) {
     }
 
     function setProxyThroughput(mbps, latency) {
-        var kbps = NaN;
-        mbps = Number(mbps);
-        if (isNaN(mbps)) {
-            // NaN should clear throttling - this is achieved by setting bw to 0
-            kbps = 0;
-            latency = 0;
-        } else {
-            if (mbps <= 0.001) {
-                // since 0 clears throttling, choose very low bw for network out
+        var url = CONTROL_BASE_URL;
+        if (!isNaN(mbps)) {
+            // NaN should clear throttling - in that case do not change base url
+            var kbps = Math.ceil(Number(mbps) * 1000); // kilobytes per second
+            if (kbps < 1) {
+                // 0 means unlimited, so avoid
                 kbps = 1;
             }
-            else {
-                kbps = Math.ceil(mbps * 1000); // kilobytes per second
-            }
+            url += '?bw=' + kbpw + 'Kbps';
+            // do not set latency - it tends to slow down dummynet excessively
+            // TODO: investigate this behavior
+            // url += '&delay=' + latency + 'ms';
         }
 
         var xhr = new XMLHttpRequest();
-        var url = CONTROL_BASE_URL + '?bw=' + kbps + 'Kbps&delay=' + latency + 'ms';
         xhr.open("GET", url);
-        //todo error check to make sure we are setting the proxy throughput
+        // TODO: error check to make sure we are setting the proxy throughput
+        // 400/404 if url not correct
+        // 500 if ipfw failed
         xhr.send();
     }
 
