@@ -200,7 +200,6 @@ Harness = function () {
         metricSet.eventType = e.type;
         //Need more error info here.
         captureMetricSet(metricSet);
-        player.reset();
         nextGroup();
     }
 
@@ -216,7 +215,7 @@ Harness = function () {
         metricSet.wallclockTime = Date.now();
         metricSet.sessionInfo = currentSessionInfo;
         try{
-            metricSet.bufferLevel = player.getBufferLength();
+            metricSet.bufferLevelAudio = player.getBufferLength('audio');
             metricSet.bufferLevelVideo = player.getBufferLength('video');
             metricSet.playheadTime = player.time();
             metricSet.lastQualityLoaded = isNaN(metricSet.lastQualityLoaded) ? player.getQualityFor('video') || player.getQualityFor('audio') : metricSet.lastQualityLoaded;
