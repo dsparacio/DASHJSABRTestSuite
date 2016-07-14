@@ -36,25 +36,23 @@ Harness = function () {
         metricsCollectionService = new MetricsCollectionService();
         networkProfileService = new NetworkProfileService();
 
-        watchdogTimer = setTimeout(window.close, 10000); // shutdown if session does not load in 10s
+        watchdogTimer = setTimeout(window.close, 10000); // shutdown if first test does not start in 10s
 
         loadSessionConfig();
     }
 
 
     function nextSession() {
-        clearTimeout(watchdogTimer);
         config = getNextSessionConfig();
         //console.log("XXX a", config.fastSwitch, config.url)
         if (config) {
-            // detect failure if session is not done in test duration + 10% + 10s
-            watchdogTimer = setTimeout(window.close, Number(config.test_duration) * 1100 + 10000);
             currentABRSuiteIndex = 0;
             networkProfileService.initialize(config.profileList, nextGroup);
         } else {
             console.log("end of all tests");
             // wait for 10s to give time for db write
             // TODO: maybe check db write return status?
+            clearTimeout(watchdogTimer);
             setTimeout(window.close, 10000);
             // Note: window.close() only works if window was originally opened with this script.
         }
@@ -87,6 +85,10 @@ Harness = function () {
     function nextABR(abr) {
 
        // console.log("XXX", abr, groupGUID, config.fastSwitch, config.url);
+
+        clearTimeout(watchdogTimer);
+        // detect failure if test is not done in test duration + 10% + 10s
+        watchdogTimer = setTimeout(window.close, Number(config.test_duration) * 1100 + 10000);
 
         currentSessionInfo = new SessionInfo();
         currentSessionInfo.time = performance.now();
