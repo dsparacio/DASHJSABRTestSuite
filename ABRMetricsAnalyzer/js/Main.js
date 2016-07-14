@@ -159,7 +159,19 @@ Main = function () {
             var o = {time: 0.001 * (element.wallclockTime - startTime)};
             var info = null;
 
-            var out = [index, (0.001 * (element.wallclockTime - startTime)).toFixed(3), element.bufferLevel, '(' + (element.playheadTime + element.bufferLevel).toFixed(3) + ')', element.eventType];
+            var bufferLevel = element.bufferLevelVideo;
+            if (bufferLevel === undefined) {
+                // old entries
+                // TODO: eventually delete this block
+                bufferLevel = element.bufferLevel;
+            }
+            if (bufferLevel === null || isNaN(bufferLevel)) {
+                bufferLevel = 0;
+            }
+            var out = [index,
+                       element.eventType,
+                       't=' + (0.001 * (element.wallclockTime - startTime)).toFixed(3) + 's',
+                       'bufferLevel(+playhead)=' + bufferLevel.toFixed(3) + '(' + (element.playheadTime + bufferLevel).toFixed(3) + ')'];
 
             switch (element.eventType) {
 
@@ -185,7 +197,7 @@ Main = function () {
                 o.throughput = info.throughput_Mbps;
                 o.duration = info.duration_s;
                 proxySettings.push(o);
-                out.push((0.001 * Number(info.latency_ms)).toFixed(3), info.throughput_Mbps);
+                out.push((0.001 * Number(info.latency_ms)).toFixed(3) + 's', info.throughput_Mbps + 'Mbps');
                 break;
 
             case 'fragmentLoadingCompleted':
@@ -243,9 +255,11 @@ Main = function () {
                     lastQuality = info.quality;
                 }
 
-                out.push(info.index, info.quality,
-                         '(' + (info.delayLoadingTime > startTime ? (0.001 * (info.delayLoadingTime - startTime)).toFixed(3) : '.') + ')',
-                         (0.000008 * info.bytesTotal).toFixed(3) + 'Mbit',
+                out.push('i=' + info.index,
+                         'q=' + info.quality,
+                         'loadAt=' + (info.delayLoadingTime > startTime ? (0.001 * (info.delayLoadingTime - startTime)).toFixed(3) : '*') + 's',
+                         'size=' + (0.000008 * info.bytesTotal).toFixed(3) + 'Mbit',
+                         'reqS/1stB/reqE(lat/dl)=' +
                          (0.001 * (parseTime(info.requestStartDate) - startTime)).toFixed(3) + '/' +
                          (0.001 * (parseTime(info.firstByteDate) - startTime)).toFixed(3) + '/' +
                          (0.001 * (parseTime(info.requestEndDate) - startTime)).toFixed(3) + ' (' +
@@ -256,9 +270,22 @@ Main = function () {
 
             case 'qualityChangeStart':
 
-                out.push(element.lastQualityLoaded, '->', element.nextQualityLoading);
+                out.push(element.lastQualityLoaded + '->' + element.nextQualityLoading);
                 if (bitrates) {
-                    out.push('(' + (0.001 * bitrates[element.nextQualityLoading]).toFixed(3) + ')');
+                    out.push('(' + (0.000001 * bitrates[element.nextQualityLoading]).toFixed(3) + 'Mbps)');
+                    if (element.switchReason) {
+                        out.push(element.switchReason.name);
+                        if (element.switchReason.throughput) {
+                            if (element.switchReason.name === 'BolaRule' || element.switchReason.name === 'BolaAbandonRule') {
+                                out.push('r.throughput=' + (0.000001 * element.switchReason.throughput).toFixed(3));
+                            } else {
+                                out.push('r.throughput=' + (0.001 * element.switchReason.throughput).toFixed(3));
+                            }
+                        }
+                        if (element.switchReason.bufferLevel) {
+                            out.push('r.bufferLevel=' + Number(element.switchReason.bufferLevel).toFixed(3));
+                        }
+                    }
                 }
                 break;
 
