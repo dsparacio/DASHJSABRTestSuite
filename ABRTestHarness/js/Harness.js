@@ -26,7 +26,7 @@ Harness = function () {
         player.on(dashjs.MediaPlayer.events.PLAYBACK_ERROR, onError);
         player.on(dashjs.MediaPlayer.events.ERROR, onError);
         player.on(dashjs.MediaPlayer.events.BUFFER_LEVEL_STATE_CHANGED, onBufferStateChange);
-        player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_START, onQualityChanged);
+        player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_REQUESTED, onQualityChanged);
         player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, onManifestLoaded);
         player.on('fragmentLoadingCompleted', onFragmentLoaded);
 
@@ -160,8 +160,6 @@ Harness = function () {
             metricSet.lastQualityLoaded = e.oldQuality;
             metricSet.nextQualityLoading = e.newQuality;
             metricSet.isUpShiftInQuality = e.oldQuality < e.newQuality;
-            if (e.reason === undefined)
-                debugger;
             metricSet.switchReason = e.reason;
             captureMetricSet(metricSet);
         }
