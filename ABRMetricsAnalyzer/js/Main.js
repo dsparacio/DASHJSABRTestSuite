@@ -169,8 +169,8 @@ Main = function () {
                 bufferLevel = 0;
             }
             var out = [index,
-                       element.eventType,
                        't=' + (0.001 * (element.wallclockTime - startTime)).toFixed(3) + 's',
+                       element.eventType,
                        'bufferLevel(+playhead)=' + bufferLevel.toFixed(3) + '(' + (element.playheadTime + bufferLevel).toFixed(3) + ')'];
 
             switch (element.eventType) {
@@ -259,7 +259,7 @@ Main = function () {
                          'q=' + info.quality,
                          'loadAt=' + (info.delayLoadingTime > startTime ? (0.001 * (info.delayLoadingTime - startTime)).toFixed(3) : '*') + 's',
                          'size=' + (0.000008 * info.bytesTotal).toFixed(3) + 'Mbit',
-                         'reqS/1stB/reqE(lat/dl)=' +
+                         'reqS/1stB/reqE(lat/dwl)=' +
                          (0.001 * (parseTime(info.requestStartDate) - startTime)).toFixed(3) + '/' +
                          (0.001 * (parseTime(info.firstByteDate) - startTime)).toFixed(3) + '/' +
                          (0.001 * (parseTime(info.requestEndDate) - startTime)).toFixed(3) + ' (' +
