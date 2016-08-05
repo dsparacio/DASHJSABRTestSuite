@@ -201,7 +201,7 @@ Main = function () {
                       'rgba(0,0,192,0.9)',
                       'rgba(0,128,128,0.9)',
                       'rgba(128,0,128,0.9)',
-                      'rgba(128,128,0,0.9)'                      
+                      'rgba(128,128,0,0.9)'
                      ];
         var colorIndex = 0;
 
@@ -239,39 +239,40 @@ Main = function () {
             });
         });
 
+        var options = {
+            scales: {
+                xAxes: [{
+                    type: 'linear',
+                    position: 'bottom',
+                    ticks: {
+                        min: 0,
+                        max: maxX
+                    }
+                }],
+                yAxes: [{
+                    type: 'linear',
+                    ticks: {
+                        min: 0,
+                        max: maxY
+                    }
+                }]
+            }
+        };
+        // options.pan = {
+        //     enabled: true,
+        //     mode: 'xy'
+        // };
+        // options.zoom = {
+        //     enabled: true,
+        //     mode: 'xy'
+        // };
+
         throughputChart = new Chart(ctx1, {
             type: 'line',
-            pointradius: 0,
             data: {
                 datasets: datasets
             },
-            options: {
-                scales: {
-                    xAxes: [{
-                        type: 'linear',
-                        position: 'bottom',
-                        ticks: {
-                            min: 0,
-                            max: maxX
-                        }
-                    }],
-                    yAxes: [{
-                        type: 'linear',
-                        ticks: {
-                            min: 0,
-                            max: maxY
-                        }
-                    }]
-                },
-                pan: {
-                    enabled: true,
-                    mode: 'xy'
-                },
-                zoom: {
-                    enabled: true,
-                    mode: 'xy'
-                }
-            }
+            options: options
         });
     }
 
@@ -424,10 +425,16 @@ Main = function () {
                     // measured throughput
                     var bits = 8 * element.fragmentRequest.bytesLoaded;
                     // var bits = 8 * (element.fragmentRequest.bytesLoaded - element.fragmentRequest.trace[0].b[0]);
-                    var downloadTime = 0.001 * (parseTime(element.fragmentRequest.requestEndDate) - parseTime(element.fragmentRequest.firstByteDate));
+                    var downloadTime = NaN;
+                    if (element.fragmentRequest.requestEndDate) {
+                        downloadTime = 0.001 * (parseTime(element.fragmentRequest.requestEndDate) - parseTime(element.fragmentRequest.firstByteDate));
+                    } else if (element.fragmentRequest.partialTrace) {
+                        downloadTime = 0.001 * element.fragmentRequest.partialTrace.slice(1).map(t => t.d).reduce((a, b) => a + b);
+                    }
                     var tp = 0.000001 * bits / downloadTime;
+                    if (isNaN(tp) || tp < 0 || t1b < 0 || tre < 0) debugger;
                     var t1b = 0.001 * (parseTime(element.fragmentRequest.firstByteDate) - startTime);
-                    var tre = 0.001 * (parseTime(element.fragmentRequest.requestEndDate) - startTime);
+                    var tre = t1b + downloadTime;
                     measuredThroughput.push({x: t1b, y: tp});
                     measuredThroughput.push({x: tre, y: tp});
                 }
