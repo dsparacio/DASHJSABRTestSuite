@@ -29,6 +29,7 @@ Harness = function () {
         player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_REQUESTED, onQualityChanged);
         player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, onManifestLoaded);
         player.on('fragmentLoadingCompleted', onFragmentLoaded);
+        player.on('fragmentLoadingAbandoned', onFragmentAbandoned);
 
 
         networkModulator = new NetworkModulator(onProfileStep);
@@ -199,6 +200,15 @@ Harness = function () {
             metricSet.eventType = e.type;
             metricSet.fragmentRequest = e.request;
             metricSet.fragmentRequestError = e.error;
+            captureMetricSet(metricSet);
+        }
+    }
+
+    function onFragmentAbandoned(e) {
+        if (e.request.mediaType === 'video') {
+            var metricSet = new MetricSet();
+            metricSet.eventType = e.type;
+            metricSet.fragmentRequest = e.request;
             captureMetricSet(metricSet);
         }
     }
