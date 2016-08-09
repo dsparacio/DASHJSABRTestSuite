@@ -3,17 +3,10 @@
 
         {
             "url":"http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd",
-            "test_duration": "600",
+            "test_duration": "300",
             "fastSwitch":false,
             "profileList":"profiles/default.json",
-            "abr":["bola", "default"]
-        },
-        {
-            "url":"http://rdmedia.bbc.co.uk/dash/ondemand/testcard/1/client_manifest-events.mpd",
-            "test_duration": "600",
-            "fastSwitch":false,
-            "profileList":"profiles/default.json",
-            "abr":["bola", "default"]
+            "abr":["default"]
         }
     ]
 }
