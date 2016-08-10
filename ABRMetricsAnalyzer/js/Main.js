@@ -66,7 +66,8 @@ Main = function () {
 
                 groups.forEach(function (e, i) {
                     groups[e.groupId] = i;
-                    var info = new Date(e.firstWallclock) + ' ' + e[0].mpd.substr(e[0].mpd.lastIndexOf('/') + 1) + ' (' + e.length + ')';
+                    var info = e[0].mpd ? new Date(e.firstWallclock) + ' ' + e[0].mpd.substr(e[0].mpd.lastIndexOf('/') + 1) + ' (' + e.length + ')' :
+                            new Date(e.firstWallclock) + ' (' + e.length + ')';
                     $("#group_select").append('<option value="' + e.groupId + '">' + info + '</option>');
                 });
 
@@ -432,7 +433,7 @@ Main = function () {
                         downloadTime = 0.001 * element.fragmentRequest.partialTrace.slice(1).map(t => t.d).reduce((a, b) => a + b);
                     }
                     var tp = 0.000001 * bits / downloadTime;
-                    if (isNaN(tp) || tp < 0 || t1b < 0 || tre < 0) debugger;
+                    if (isNaN(tp) || tp < 0 || t1b < 0 || tre < 0);
                     var t1b = 0.001 * (parseTime(element.fragmentRequest.firstByteDate) - startTime);
                     var tre = t1b + downloadTime;
                     measuredThroughput.push({x: t1b, y: tp});

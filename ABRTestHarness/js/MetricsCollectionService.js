@@ -8,7 +8,7 @@ MetricsCollectionService = function() {
 
     var document = null;
 
-    function initialize() {1
+    function initialize() {
         document = new MetricSessionDocument();
     }
 
