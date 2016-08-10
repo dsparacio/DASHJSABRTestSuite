@@ -66,7 +66,7 @@ Main = function () {
 
                 groups.forEach(function (e, i) {
                     groups[e.groupId] = i;
-                    var info = new Date(e.firstWallclock) + ' ' + e[0].mpd.substr(e[0].mpd.lastIndexOf('/') + 1) + ' (' + e.length + ')';
+                    var info = new Date(e.firstWallclock).toISOString() + ' ' + e[0].mpd.substr(e[0].mpd.lastIndexOf('/') + 1) + ' (' + e.length + ')';
                     $("#group_select").append('<option value="' + e.groupId + '">' + info + '</option>');
                 });
 
@@ -206,9 +206,10 @@ Main = function () {
         var colorIndex = 0;
 
         var datasets = [{
-            label: 'set throughput',
+            label: 'bw profile',
             fill: false,
             lineTension: 0,
+            pointRadius: 0,
             data: documentsInfo[0].setThroughput,
             borderColor: colors[colorIndex]
         }];
@@ -218,6 +219,7 @@ Main = function () {
                 label: info.abr + ': throughput',
                 fill: false,
                 lineTension: 0,
+                pointRadius: 0,
                 data: info.measuredThroughput,
                 borderColor: colors[colorIndex]
             });
@@ -226,6 +228,7 @@ Main = function () {
                 label: info.abr + ': requested',
                 fill: false,
                 lineTension: 0,
+                pointRadius: 0,
                 data: info.chosenBitrate,
                 borderColor: colors[colorIndex]
             });
@@ -234,6 +237,7 @@ Main = function () {
                 label: info.abr + ': rendered',
                 fill: false,
                 lineTension: 0,
+                pointRadius: 0,
                 data: info.renderedBitrate,
                 borderColor: colors[colorIndex]
             });
@@ -432,7 +436,6 @@ Main = function () {
                         downloadTime = 0.001 * element.fragmentRequest.partialTrace.slice(1).map(t => t.d).reduce((a, b) => a + b);
                     }
                     var tp = 0.000001 * bits / downloadTime;
-                    if (isNaN(tp) || tp < 0 || t1b < 0 || tre < 0) debugger;
                     var t1b = 0.001 * (parseTime(element.fragmentRequest.firstByteDate) - startTime);
                     var tre = t1b + downloadTime;
                     measuredThroughput.push({x: t1b, y: tp});
