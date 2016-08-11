@@ -2,10 +2,13 @@
 // run:     ./proxy 8082
 
 /*
+ * Runs in single thread.
+ * (Although threading is used for getaddrinfo() name resolution which has no async equivalent).
+ *
  * Known issues:
  *
  * 1. Does not support IPv6 connections.
- * 2. Only works if client lists exactly one method: no authentication.
+ * 2. Only works if client lists exactly one SOCKS5 method: no authentication.
  * 3. Expects SOCKS5 control messages to be read/written in one recv/send call (highly likely).
  * 4. SOCKS5 error reporting is not done.
  * 5. Does not handle unexpected errors gracefully.
@@ -35,9 +38,9 @@ enum connection_state {
 };
 
 struct name_resolution {
-    int fd; // select on read to check when done
-    short port; // store nbo port here
-    int resolved;
+    uint16_t port; // store nbo port here
+    volatile int resolved;
+    int fd; // fd where to write 1 character when ready (to interrupt select)
     const char* name;
     addrinfo* ai;
 };
@@ -193,15 +196,16 @@ static void name_resolution_call(void* param)
     }
 
     nr->resolved = 1;
-    close_socket(nr->fd); // signal to select
+
+    char c = 0;
+    send(nr->fd, &c, 1, 0); // signal to select
 }
 
-static name_resolution* start_name_resolution(const char* name)
+static name_resolution* start_name_resolution(const char* name, int fd)
 {
     name_resolution* nr = new name_resolution;
     nr->resolved = 0;
-    nr->fd = socket(PF_INET, SOCK_DGRAM, 0);
-    assert(nr->fd >= 0);
+    nr->fd = fd;
     nr->name = name;
     thread_start(&name_resolution_call, nr);
     return nr;
@@ -239,6 +243,7 @@ int main(int argc, char** argv)
         port = parse_port(argv[2]);
     }
     sockaddr_in saddr;
+    sockaddr_len_t saddr_len;
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
     saddr.sin_addr.s_addr = htonl(addr);
@@ -256,6 +261,32 @@ int main(int argc, char** argv)
 
     r = listen(server_socket, 16);
     assert(r == 0);
+
+    // create socket pair to interrupt select - pipe() doesn't work on Windows
+    int select_interrupter_write = socket(PF_INET, SOCK_STREAM, 0);
+    uint32_t localhost = htonl(0x7f000001); // 127.0.0.1
+    saddr.sin_addr.s_addr = localhost;
+    // keep sin_family and sin_port
+    r = connect(select_interrupter_write, (sockaddr*)&saddr, sizeof(saddr));
+    assert(r == 0);
+    saddr_len = sizeof(saddr);
+    r = getsockname(select_interrupter_write, (sockaddr*)&saddr, &saddr_len);
+    assert(r == 0);
+    assert(saddr.sin_addr.s_addr == localhost);
+    port = saddr.sin_port;
+    int select_interrupter_read = -1;
+    while (select_interrupter_read < 0) {
+        saddr_len = sizeof(saddr);
+        select_interrupter_read = accept(server_socket, (sockaddr*)&saddr, &saddr_len);
+        assert(select_interrupter_read >= 0);
+        if (saddr.sin_addr.s_addr != localhost || saddr.sin_port != port) {
+            close_socket(select_interrupter_read);
+            select_interrupter_read = -1;
+        }
+    }
+    shutdown_socket_send(select_interrupter_read);
+    // write to select_interrupter_write to interrupt select
+    // use select_interrupter_read in select call
 
     socks5 = (argc <= 3);
 
@@ -277,12 +308,18 @@ int main(int argc, char** argv)
     fd_set readfds;
     fd_set writefds;
 
+    int nfds0 = server_socket;
+    if (select_interrupter_read > nfds0) {
+        nfds0 = select_interrupter_read;
+    }
+
     for (; ; ) {
         FD_ZERO(&readfds);
         FD_ZERO(&writefds);
 
-        nfds = server_socket;
+        nfds = nfds0;
         FD_SET(server_socket, &readfds);
+        FD_SET(select_interrupter_read, &readfds);
 
         for (auto iter = connections.begin();
              iter != connections.end();
@@ -308,9 +345,6 @@ int main(int argc, char** argv)
                 break;
 
             case cs_s5_resolving_name:
-                FD_SET((*iter)->nr->fd, &readfds);
-                if ((*iter)->nr->fd > nfds)
-                    nfds = (*iter)->nr->fd;
                 break;
 
             case cs_connecting:
@@ -352,18 +386,14 @@ int main(int argc, char** argv)
         ++nfds;
 
         r = select(nfds, &readfds, &writefds, NULL, NULL);
-        // TODO: There is a race condition if a "pseudo"-socket is closed its
-        //       fd is reused. This should be very rare and needs ~1hr to resolve.
-        if (r < 0) {
-            // indication that some nr->fd is closed just before select
-            // so look for such cases
-            FD_ZERO(&readfds);
-            FD_ZERO(&writefds);
-            for (auto iter = connections.begin(); iter != connections.end(); ++iter) {
-                if ((*iter)->state == cs_s5_resolving_name && (*iter)->nr->resolved) {
-                    FD_SET((*iter)->nr->fd, &readfds);
-                }
-            }
+        assert(r > 0);
+
+
+        if (FD_ISSET(select_interrupter_read, &readfds)) {
+            // This check MUST be performed before iterating through connections.
+            // Otherwise, we might clear interruption and not handle it.
+            char buf[16]; // 1 should really be enough, but 16 doesn't hurt
+            recv(select_interrupter_read, buf, 16, 0);
         }
 
         for (auto iter = connections.begin(); iter != connections.end(); ) {
@@ -371,7 +401,7 @@ int main(int argc, char** argv)
             const char* fail_txt_1 = nullptr;
             const char* fail_txt_2 = nullptr;
             const char* fail_txt_3 = nullptr;
-            char* buf;
+            char* buf = nullptr;
 
             switch ((*iter)->state) {
             case cs_s5_client_greet:
@@ -423,10 +453,9 @@ int main(int argc, char** argv)
                     memcpy(&saddr.sin_addr.s_addr, buf + 4, 4);
                     memcpy(&saddr.sin_port, buf + 6, 2);
                 } else if (buf[3] == 3 && (unsigned char)buf[4] + 7 == r) {
-                    short port;
                     memcpy(&port, buf + r - 2, 2);
                     buf[r - 2] = '\0';
-                    (*iter)->nr = start_name_resolution(buf + 5);
+                    (*iter)->nr = start_name_resolution(buf + 5, select_interrupter_write);
                     (*iter)->nr->port = port;
                     (*iter)->state = cs_s5_resolving_name;
                     break;
@@ -439,10 +468,11 @@ int main(int argc, char** argv)
                 // do not break, run on
 
             case cs_s5_resolving_name:
-                // avoid this code in run on case
                 if ((*iter)->state == cs_s5_resolving_name) {
-                    if (!FD_ISSET((*iter)->nr->fd, &readfds))
+                    // avoid this code in run on case
+                    if (!(*iter)->nr->resolved) {
                         break;
+                    }
                     buf = (*iter)->buffer_a_to_b + 4;
                     saddr.sin_family = AF_INET;
                     memcpy(&saddr.sin_port, &(*iter)->nr->port, 2);
@@ -464,7 +494,7 @@ int main(int argc, char** argv)
                 assert(r == 0);
 
                 r = connect((*iter)->fd_b, (sockaddr*)&saddr, sizeof(saddr));
-                // r != 0
+                // r != 0 because async (non-blocking)
 
                 std::cout << (*iter)->fd_a << ':' << (*iter)->fd_b << " new out connection - "
                           << format_addr(ntohl(saddr.sin_addr.s_addr)) << ':'
@@ -605,9 +635,9 @@ int main(int argc, char** argv)
 
         if (FD_ISSET(server_socket, &readfds)) {
             sockaddr_in saddr2;
-            sockaddr_len_t saddr_len = sizeof(saddr2);
-            int a = accept(server_socket, (sockaddr*)&saddr2, &saddr_len);
-            assert(a >= 0 && saddr_len == sizeof(saddr2));
+            sockaddr_len_t saddr2_len = sizeof(saddr2);
+            int a = accept(server_socket, (sockaddr*)&saddr2, &saddr2_len);
+            assert(a >= 0 && saddr2_len == sizeof(saddr2));
 
             r = non_block(a);
             assert(r == 0);
@@ -620,7 +650,7 @@ int main(int argc, char** argv)
                 assert(r == 0);
 
                 r = connect(b, (sockaddr*)&saddr, sizeof(saddr));
-                // r != 0
+                // r != 0 because async (non-blocking)
 
                 std::cout << a << ':' << b << " new connection - "
                           << format_addr(ntohl(saddr2.sin_addr.s_addr)) << ':'
