@@ -66,7 +66,9 @@ Main = function () {
 
                 groups.forEach(function (e, i) {
                     groups[e.groupId] = i;
-                    var info = new Date(e.firstWallclock).toISOString() + ' ' + e[0].mpd.substr(e[0].mpd.lastIndexOf('/') + 1) + ' (' + e.length + ')';
+                    var info = new Date(e.firstWallclock).toISOString() +
+                        (e[0].mpd ? ' ' + e[0].mpd.substr(e[0].mpd.lastIndexOf('/') + 1) : '') +
+                        ' (' + e.length + ')';
                     $("#group_select").append('<option value="' + e.groupId + '">' + info + '</option>');
                 });
 
@@ -171,7 +173,7 @@ Main = function () {
         $("#stats").html(table);
 
         documentsInfo.forEach(info => {
-            console.log('ABR: ', info.abr);
+            console.log('ABR:', info.abr);
             info.outputLog.forEach(out => console.log.apply(console, out));
         });
 
