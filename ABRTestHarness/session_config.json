@@ -3,7 +3,7 @@
 
         {
             "url":"http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd",
-            "test_duration": "300",
+            "test_duration": "600",
             "fastSwitch":false,
             "profileList":"profiles/default.json",
             "abr":["default"]
