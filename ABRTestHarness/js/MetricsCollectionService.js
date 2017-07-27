@@ -1,6 +1,6 @@
 MetricsCollectionService = function() {
 
-    $.couch.urlPrefix =  'http://dev-mediac-osqa01.kendall.corp.akamai.com:5984';
+    $.couch.urlPrefix = '<URL TO YOUR COUCH DB>';
 
     var DB_DEV = "dashabr_test_results_dev";
     var DB_PROD = "dashabr_test_results";
