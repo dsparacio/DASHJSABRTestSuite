@@ -1,6 +1,6 @@
 ManualUpload = function() {
 
-    $.couch.urlPrefix =  'http://dev-mediac-osqa01.kendall.corp.akamai.com:5984';
+    $.couch.urlPrefix =  '<URL TO YOUR COUCH DB>';
     var DB_DEV = 'network_profiler_dev';
     var DB_PROD = 'network_profiler';
     var DB_NAME = DB_DEV;
