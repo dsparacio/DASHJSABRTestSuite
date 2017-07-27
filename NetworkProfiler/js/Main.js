@@ -392,7 +392,7 @@ Main = function () {
                 document.getElementById('status').innerHTML = 'Test complete. Thank you.';
             }
             else {
-                var emailUrl = 'mailto:kspiteri@akamai.com?Subject=%5BNetworkProfile%5D%20Network%20Measurement&body=' + encodeURIComponent(JSON.stringify(doc));
+                var emailUrl = 'mailto:email@email.com?Subject=%5BNetworkProfile%5D%20Network%20Measurement&body=' + encodeURIComponent(JSON.stringify(doc));
                 document.getElementById('status').innerHTML = 'Oops we cannot write to database since you are not on the ' +
                     'Akamai VPN. No problem, we have auto-populated an email for you to send us! If for some reason you do not see the email click the link to regenerate it. <a id="email_link" href="' + emailUrl + '">Regenerate the email</a>';
                 document.getElementById('email_link').click();
